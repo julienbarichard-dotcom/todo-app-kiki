@@ -309,7 +309,9 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Optimized with caching to avoid redundant filter operations
   List<TodoTask> _appliquerFiltres(List<TodoTask> taches) {
     // Create a cache key based on filter state and task list hash
-    final filterKey = '${taches.length}_$_triDate\_$_filtrePeriode\_$_filtreEtat\_$_filtreLabel\_$_filtreSousTaches\_$_filtrePriorite';
+    // Using hashCode of the task list content to detect when tasks change
+    final tasksHash = taches.map((t) => t.id).join(',').hashCode;
+    final filterKey = '${tasksHash}_${_triDate}_${_filtrePeriode}_${_filtreEtat}_${_filtreLabel}_${_filtreSousTaches}_${_filtrePriorite}';
     
     // Return cached result if filters haven't changed
     if (_lastFilterKey == filterKey && _cachedFilteredTasks != null) {

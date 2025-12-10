@@ -155,10 +155,19 @@ class TodoProvider extends ChangeNotifier {
   }
 
   /// Fonction simplifiée pour compatibilité
-  /// Polling interval increased to 2 minutes to reduce server load
+  /// 
+  /// Polling interval optimization:
+  /// - Changed from 30s to 120s (2 minutes) to reduce server load
+  /// - Trade-offs:
+  ///   * Pro: 75% reduction in API calls (120/hour → 30/hour)
+  ///   * Pro: Lower battery consumption and network usage
+  ///   * Pro: Reduced risk of rate limiting
+  ///   * Con: Task updates may take up to 2 minutes to appear
+  /// - Rationale: Most task updates are user-initiated and trigger immediate
+  ///   refreshes. Background polling is primarily for multi-device sync, which
+  ///   doesn't require sub-minute precision.
   void subscribeToTaskUpdates() {
     if (_pollTimer != null) return;
-    // Optimized: Reduced polling frequency from 30s to 120s to minimize unnecessary API calls
     _pollTimer = Timer.periodic(const Duration(seconds: 120), (t) async {
       try {
         await loadTaches();
