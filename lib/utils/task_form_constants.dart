@@ -16,9 +16,12 @@ class TaskFormConstants {
   /// Notification minutes before options
   static const List<int> notificationMinutes = [5, 15, 30, 60, 120, 1440];
 
+  /// Minutes in a full day (24 hours)
+  static const int minutesPerDay = 1440;
+
   /// Get display text for notification minutes
   static String getNotificationMinutesLabel(int minutes) {
-    if (minutes == 1440) {
+    if (minutes == minutesPerDay) {
       return '1 jour';
     } else if (minutes >= 60) {
       return '${minutes ~/ 60}h';

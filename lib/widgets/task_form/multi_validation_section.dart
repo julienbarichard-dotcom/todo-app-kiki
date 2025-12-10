@@ -2,10 +2,20 @@ import 'package:flutter/material.dart';
 
 /// Reusable multi-validation section widget
 /// Extracted to avoid duplication between add_task_screen and edit_task_screen
+///
+/// Displays a checkbox to enable/disable multi-validation mode
+/// and shows informational messages about the feature
 class MultiValidationSection extends StatelessWidget {
+  /// Whether multi-validation is currently enabled
   final bool isMultiValidation;
+
+  /// Callback when the checkbox value changes
   final ValueChanged<bool> onChanged;
+
+  /// Number of people assigned to the task
   final int assignedPersonCount;
+
+  /// Accent color for the checkbox and borders
   final Color accentColor;
 
   const MultiValidationSection({
