@@ -18,7 +18,7 @@ class GoogleCalendarService {
   GoogleCalendarService._internal();
 
   calendar.CalendarApi? _calendarApi;
-  bool _isInitialized = false;
+  // _isInitialized was removed: assignments were present but the field was never read.
 
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     clientId: GoogleCalendarConfig.clientId,
@@ -44,7 +44,6 @@ class GoogleCalendarService {
 
       if (!wasLoggedIn) {
         debugPrint('ℹ️ Aucune session précédente trouvée');
-        _isInitialized = true;
         return false;
       }
 
@@ -61,7 +60,6 @@ class GoogleCalendarService {
         debugPrint(
             '💡 Note: Sur web, les cookies doivent être autorisés pour accounts.google.com');
         await prefs.setBool('google_calendar_logged_in', false);
-        _isInitialized = true;
         return false;
       }
 
@@ -84,13 +82,12 @@ class GoogleCalendarService {
         debugPrint('❌ Client authentifié null - tokens peut-être expirés');
         debugPrint('💡 Une reconnexion manuelle sera nécessaire');
         await prefs.setBool('google_calendar_logged_in', false);
-        _isInitialized = true;
         return false;
       }
 
       // Initialiser l'API Calendar
       _calendarApi = calendar.CalendarApi(authClient);
-      _isInitialized = true;
+
       debugPrint('✅ API Calendar restaurée et prête');
 
       // Initialiser la db des fuseaux si nécessaire (idempotent)
@@ -109,7 +106,6 @@ class GoogleCalendarService {
         await prefs.setBool('google_calendar_logged_in', false);
       } catch (_) {}
 
-      _isInitialized = true;
       return false;
     }
   }
@@ -183,7 +179,6 @@ class GoogleCalendarService {
 
       // Réinitialiser l'API
       _calendarApi = null;
-      _isInitialized = false;
 
       debugPrint('✅ Déconnexion Google Calendar réussie');
     } catch (e) {
@@ -193,7 +188,6 @@ class GoogleCalendarService {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('google_calendar_logged_in', false);
         _calendarApi = null;
-        _isInitialized = false;
       } catch (_) {}
     }
   }
@@ -441,7 +435,6 @@ class GoogleCalendarService {
   Future<void> logout() async {
     await _googleSignIn.signOut();
     _calendarApi = null;
-    _isInitialized = false;
 
     // Effacer l'état de connexion
     final prefs = await SharedPreferences.getInstance();

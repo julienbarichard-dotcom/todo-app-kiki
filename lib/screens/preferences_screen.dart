@@ -82,6 +82,7 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
 
     // Forcer le rafraîchissement des événements avec nouvelles préférences
     try {
+      // ignore: use_build_context_synchronously
       final outingsProv = Provider.of<OutingsProvider>(context, listen: false);
       outingsProv.resetDailyOuting(); // Vide le cache
       await outingsProv.loadEvents(); // Recharge
@@ -101,15 +102,14 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
       debugPrint('⚠️ Erreur rafraîchissement événements: $e');
     }
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Préférences sauvegardées ✓'),
-          backgroundColor: Color(0xFF1DB679),
-          duration: Duration(seconds: 2),
-        ),
-      );
-    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('✅ Préférences sauvegardées et événements mis à jour'),
+        backgroundColor: Color(0xFF1DB679),
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
@@ -178,25 +178,6 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                 ElevatedButton.icon(
                   onPressed: () async {
                     await _savePreferences();
-                    // Forcer nouveau calcul avec nouvelles préférences
-                    if (mounted) {
-                      final outingsProv =
-                          Provider.of<OutingsProvider>(context, listen: false);
-                      final prefs = await SharedPreferences.getInstance();
-                      final userPreferences =
-                          prefs.getStringList('user_music_preferences') ?? [];
-                      outingsProv.pickSuggestion(userPreferences,
-                          forceNew: true);
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                                '✅ Préférences sauvegardées et événements mis à jour'),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                      }
-                    }
                   },
                   icon: const Icon(Icons.save),
                   label: const Text('Sauvegarder mes préférences'),

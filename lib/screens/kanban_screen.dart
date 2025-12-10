@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../utils/color_extensions.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+// Removed unused imports (cleaned by Copilot-agent)
 import '../models/todo_task.dart';
 import '../providers/todo_provider.dart';
 import '../providers/user_provider.dart';
@@ -15,7 +14,7 @@ class KanbanScreen extends StatefulWidget {
 }
 
 class _KanbanScreenState extends State<KanbanScreen> {
-  static const Color mintGreen = Color(0xFF1DB679);
+  // Removed unused color constant
 
   String get utilisateurActuel {
     final userProvider = context.read<UserProvider>();
@@ -151,7 +150,8 @@ class _KanbanScreenState extends State<KanbanScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.2),
+                    // withOpacity deprecated in analyzer; convert to withAlpha
+                    color: color.withAlpha((0.2 * 255).round()),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -199,7 +199,7 @@ class _KanbanScreenState extends State<KanbanScreen> {
   ) {
     final isRejected = tache.isRejected;
     final backgroundColor = isRejected ? Colors.red[700] : Colors.grey[900];
-    final textColor = Colors.white;
+    const textColor = Colors.white;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -235,7 +235,7 @@ class _KanbanScreenState extends State<KanbanScreen> {
                     Expanded(
                       child: Text(
                         tache.titre,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: textColor,

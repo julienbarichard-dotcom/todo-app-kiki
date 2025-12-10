@@ -227,67 +227,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Afficher le popup de notes rapides
-  void _showQuickNoteDialog() {
-    final controller = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.note_add, color: Colors.blue),
-              SizedBox(width: 12),
-              Text('Note rapide'),
-            ],
-          ),
-          content: TextField(
-            controller: controller,
-            maxLines: 5,
-            decoration: const InputDecoration(
-              hintText: 'Écrivez votre note ici...',
-              border: OutlineInputBorder(),
-            ),
-            autofocus: true,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Annuler'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final note = controller.text.trim();
-                if (note.isNotEmpty) {
-                  // Créer une tâche rapide avec la note
-                  final quickTask = TodoTask(
-                    id: DateTime.now().millisecondsSinceEpoch.toString(),
-                    titre:
-                        note.length > 30 ? '${note.substring(0, 30)}...' : note,
-                    description: note,
-                    urgence: Urgence.moyenne,
-                    dateCreation: DateTime.now(),
-                    assignedTo: [utilisateurActuel],
-                  );
-
-                  context.read<TodoProvider>().ajouterTache(quickTask);
-                  Navigator.pop(context);
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Note ajoutée aux tâches'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                }
-              },
-              child: const Text('Ajouter'),
-            ),
-          ],
-        );
-      },
-    );
-  }
+  // NOTE: la boîte de dialogue de "note rapide" n'est actuellement pas utilisée.
+  // Si besoin plus tard, réimplémenter `_showQuickNoteDialog`.
 
   /// Afficher popup demandant la connexion Google Calendar
   void _afficherPopupConnexionCalendar() {
@@ -317,19 +258,22 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           ElevatedButton.icon(
             onPressed: () async {
-              Navigator.of(context).pop();
+              final navigator = Navigator.of(context);
+              final messenger = ScaffoldMessenger.of(context);
+              navigator.pop();
               final success = await GoogleCalendarService().authenticate();
-              if (success && mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
+              if (!mounted) return;
+              if (success) {
+                messenger.showSnackBar(
                   const SnackBar(
                     content: Text('✅ Google Calendar connecté avec succès !'),
                     backgroundColor: Colors.green,
                     duration: Duration(seconds: 3),
                   ),
                 );
-              } else if (mounted) {
+              } else {
                 // Réafficher le popup si échec
-                ScaffoldMessenger.of(context).showSnackBar(
+                messenger.showSnackBar(
                   const SnackBar(
                     content: Text('❌ Échec de la connexion, réessayez'),
                     backgroundColor: Colors.red,
@@ -773,6 +717,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onSelected: (value) async {
               if (value == 'logout') {
                 // Déconnecter l'utilisateur et effacer toutes les sessions
+                final navigator = Navigator.of(context);
                 await context.read<UserProvider>().logout();
 
                 // Déconnecter également Google Calendar si connecté
@@ -782,9 +727,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   debugPrint('Erreur déconnexion Calendar lors du logout: $e');
                 }
 
-                if (mounted) {
-                  Navigator.of(context).pushReplacementNamed('/');
-                }
+                if (!mounted) return;
+                navigator.pushReplacementNamed('/');
               } else if (value == 'change_password') {
                 _showChangePasswordDialog(context);
               } else if (value == 'delete_password') {

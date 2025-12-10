@@ -17,7 +17,6 @@ void main() {
   print('ISO 8601: ${nowParis.toUtc().toIso8601String()}\n');
 
   // Exemple 2: Date spécifique (28 nov 2025 15:00 Paris)
-  final exampleDate = DateTime(2025, 11, 28, 15, 0);
   final exampleParis = tz.TZDateTime(paris, 2025, 11, 28, 15, 0);
   print('Date exemple: 28 nov 2025 15:00');
   print('TZDateTime Paris: $exampleParis');
