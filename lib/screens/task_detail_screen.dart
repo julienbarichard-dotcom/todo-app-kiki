@@ -262,58 +262,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                       const SizedBox(height: 24),
                     ],
 
-                    // Date d'échéance
-                    if (widget.tache.dateEcheance != null) ...[
-                      _buildSection(
-                        context,
-                        icon: Icons.calendar_today,
-                        title: 'Date d\'échéance',
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).cardColor,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.grey.withOpacitySafe(0.3),
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.event,
-                                    color: mintGreen,
-                                    size: 28,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    _formatDate(widget.tache.dateEcheance!),
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              // Rappels désactivés dans l'UI
-                              _buildSection(
-                                context,
-                                icon: Icons.notifications,
-                                title: 'Rappels',
-                                child: const Text(
-                                    'Les rappels ont été désactivés.'),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
+                    // Date d'échéance and reminders removed from UI
 
                     // Assigné à
                     _buildSection(

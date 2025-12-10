@@ -26,7 +26,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
   // Valeurs sélectionnées
   Urgence _urgenceSelectionnee = Urgence.moyenne;
-  DateTime? _dateSelectionnee;
   final List<String> _assignedToPrenoms = [];
   final List<SubTask> _subTasks = [];
   final _subTaskController = TextEditingController();
@@ -53,7 +52,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       _titreController.text = task.titre;
       _descriptionController.text = task.description;
       _urgenceSelectionnee = task.urgence;
-      _dateSelectionnee = task.dateEcheance;
+      // dateEcheance removed from UI
       _assignedToPrenoms.addAll(task.assignedTo);
       // notification fields intentionally not loaded into the edit form
       _subTasks.addAll(task.subTasks);
@@ -135,9 +134,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
             _buildMultiValidationSection(mintGreen),
             const SizedBox(height: 16),
 
-            // Date d'échéance
-            _buildDatePickerSection(context),
-            const SizedBox(height: 16),
+            // Date d'échéance: removed from UI
 
             // Paramètres de notifications (activation + délai)
             _buildNotificationSection(mintGreen),
@@ -348,139 +345,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     );
   }
 
-  Widget _buildDatePickerSection(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Date d\'échéance (optionnelle)',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _dateSelectionnee != null
-                        ? _formatDateTime(_dateSelectionnee!)
-                        : 'Pas de date',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: _dateSelectionnee != null
-                          ? Colors.black87
-                          : Colors.grey[600],
-                    ),
-                  ),
-                ),
-                ElevatedButton.icon(
-                  onPressed: _pickDateTime,
-                  icon: const Icon(Icons.calendar_today),
-                  label: const Text('Choisir'),
-                ),
-                if (_dateSelectionnee != null)
-                  IconButton(
-                    onPressed: () => setState(() => _dateSelectionnee = null),
-                    icon: const Icon(Icons.close, color: Colors.red),
-                  ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _pickDateTime() async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: _dateSelectionnee ?? DateTime.now(),
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime(2100),
-    );
-    if (date == null || !mounted) return;
-
-    // Dialog pour saisir l'heure au lieu du time picker avec aiguilles
-    int selectedHour = (_dateSelectionnee?.hour) ?? DateTime.now().hour;
-    int selectedMinute = (_dateSelectionnee?.minute) ?? 0;
-
-    final time = await showDialog<TimeOfDay>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Sélectionner l\'heure'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Affichage de l'heure sélectionnée
-              Text(
-                '${selectedHour.toString().padLeft(2, '0')}:${selectedMinute.toString().padLeft(2, '0')}',
-                style:
-                    const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              // Sliders pour heure et minutes
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      children: [
-                        const Text('Heure'),
-                        Slider(
-                          value: selectedHour.toDouble(),
-                          min: 0,
-                          max: 23,
-                          divisions: 23,
-                          onChanged: (value) =>
-                              setState(() => selectedHour = value.toInt()),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        const Text('Minutes'),
-                        Slider(
-                          value: selectedMinute.toDouble(),
-                          min: 0,
-                          max: 59,
-                          divisions: 59,
-                          onChanged: (value) =>
-                              setState(() => selectedMinute = value.toInt()),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Annuler'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context,
-                  TimeOfDay(hour: selectedHour, minute: selectedMinute)),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (time == null) return;
-    if (!mounted) return;
-
-    setState(() {
-      _dateSelectionnee =
-          DateTime(date.year, date.month, date.day, time.hour, time.minute);
-    });
-  }
+  // Date picker removed from UI
 
   Widget _buildNotificationSection(Color mintGreen) {
     return Card(
@@ -659,7 +524,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         titre: _titreController.text,
         description: _descriptionController.text,
         urgence: _urgenceSelectionnee,
-        dateEcheance: _dateSelectionnee,
         assignedTo: _assignedToPrenoms,
         subTasks: _subTasks,
         label: _labelSelectionne,
@@ -677,7 +541,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         titre: _titreController.text,
         description: _descriptionController.text,
         urgence: _urgenceSelectionnee,
-        dateEcheance: _dateSelectionnee,
         assignedTo: _assignedToPrenoms,
         dateCreation: DateTime.now(),
         subTasks: _subTasks,

@@ -368,19 +368,6 @@ class TodoTaskCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 16),
-                        // Date d'échéance
-                        if (tache.dateEcheance != null) ...[
-                          Icon(Icons.calendar_today,
-                              size: 16, color: textColorSecondary),
-                          const SizedBox(width: 4),
-                          Text(
-                            _formatDate(tache.dateEcheance!),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: textColorSecondary,
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                   ),
