@@ -179,8 +179,10 @@ class TodoProvider extends ChangeNotifier {
   void subscribeToTaskUpdates() {
     // Polling fallback: refresh tâches toutes les 8 secondes.
     if (_pollTimer != null) return;
-    debugPrint('Subscription polling activée (refresh toutes les 8s)');
-    _pollTimer = Timer.periodic(const Duration(seconds: 8), (t) async {
+    // Réduire la fréquence de polling pour éviter des appels répétés
+    // lors du développement / en cas de réseau lent.
+    debugPrint('Subscription polling activée (refresh toutes les 30s)');
+    _pollTimer = Timer.periodic(const Duration(seconds: 30), (t) async {
       try {
         await loadTaches();
       } catch (e) {

@@ -8,4 +8,6 @@ const String? scraperApiUrl = null;
 /// Drapeau de débogage : si `true`, on désactive temporairement
 /// toutes les tentatives d'authentification Google Calendar au démarrage.
 /// Utilise ceci pour tester l'UI / popup sans lancer la flow OAuth.
-const bool disableCalendarAuthForDev = false;
+// En développement local, mettre sur `true` pour éviter d'ouvrir
+// la popup d'authentification Google Calendar au démarrage.
+const bool disableCalendarAuthForDev = true;
