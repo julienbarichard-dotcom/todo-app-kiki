@@ -306,23 +306,30 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Calculate hash of current filter state for cache validation
+  int _calculateFilterKey() {
+    return Object.hashAll([
+      _triDate,
+      _filtrePeriode,
+      _filtreEtat ?? '',
+      _filtreLabel ?? '',
+      _filtreSousTaches?.toString() ?? '',
+      _filtrePriorite ?? '',
+    ]);
+  }
+
+  /// Calculate hash of task list state for cache validation
+  int _calculateProviderHash(List<TodoTask> taches) {
+    return Object.hashAll(taches.map((t) => t.id));
+  }
+
   /// Applique tous les filtres sur la liste de tâches
   /// Optimized with caching to avoid redundant filter operations
   List<TodoTask> _appliquerFiltres(List<TodoTask> taches) {
     // Quick exit if cache exists - avoid unnecessary hash computations
     if (_cachedFilteredTasks != null) {
-      // Create filter key combining filter state (as int for efficient comparison)
-      final filterKey = Object.hashAll([
-        _triDate,
-        _filtrePeriode,
-        _filtreEtat ?? '',
-        _filtreLabel ?? '',
-        _filtreSousTaches?.toString() ?? '',
-        _filtrePriorite ?? '',
-      ]);
-      
-      // Create a simple hash of task list state using task IDs
-      final providerHash = Object.hashAll(taches.map((t) => t.id));
+      final filterKey = _calculateFilterKey();
+      final providerHash = _calculateProviderHash(taches);
       
       // Return cached result if neither filters nor tasks have changed
       if (_lastFilterKey == filterKey && _lastProviderHash == providerHash) {
@@ -422,18 +429,8 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     // Cache the result along with both hash values for next comparison
-    final filterKey = Object.hashAll([
-      _triDate,
-      _filtrePeriode,
-      _filtreEtat ?? '',
-      _filtreLabel ?? '',
-      _filtreSousTaches?.toString() ?? '',
-      _filtrePriorite ?? '',
-    ]);
-    final providerHash = Object.hashAll(taches.map((t) => t.id));
-    
-    _lastFilterKey = filterKey;
-    _lastProviderHash = providerHash;
+    _lastFilterKey = _calculateFilterKey();
+    _lastProviderHash = _calculateProviderHash(taches);
     _cachedFilteredTasks = tachesFiltrees;
 
     return tachesFiltrees;

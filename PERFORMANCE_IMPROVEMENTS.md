@@ -46,26 +46,29 @@ The `_appliquerFiltres()` method in HomeScreen was recalculating filtered task l
 - Added cache fields: `_cachedFilteredTasks`, `_lastFilterKey` (int), and `_lastProviderHash`
 - Cache is invalidated when filters change OR task data changes
 - Uses `Object.hashAll()` for efficient hash computation
+- Extracted helper methods to avoid code duplication
 - Optimized to check cache existence first before computing hashes
 - Location: `lib/screens/home_screen.dart` - `_appliquerFiltres()` method
 
 ```dart
-// Quick exit if cache exists - avoid unnecessary hash computations
-if (_cachedFilteredTasks != null) {
-  // Create filter key as int for efficient comparison
-  final filterKey = Object.hashAll([
-    _triDate,
-    _filtrePeriode,
-    _filtreEtat ?? '',
-    _filtreLabel ?? '',
-    _filtreSousTaches?.toString() ?? '',
+// Helper methods for cache key computation
+int _calculateFilterKey() {
+  return Object.hashAll([
+    _triDate, _filtrePeriode, _filtreEtat ?? '',
+    _filtreLabel ?? '', _filtreSousTaches?.toString() ?? '',
     _filtrePriorite ?? '',
   ]);
+}
+
+int _calculateProviderHash(List<TodoTask> taches) {
+  return Object.hashAll(taches.map((t) => t.id));
+}
+
+// Cache validation - quick exit if nothing changed
+if (_cachedFilteredTasks != null) {
+  final filterKey = _calculateFilterKey();
+  final providerHash = _calculateProviderHash(taches);
   
-  // Create hash of task list state using task IDs
-  final providerHash = Object.hashAll(taches.map((t) => t.id));
-  
-  // Return cached result if neither filters nor tasks have changed
   if (_lastFilterKey == filterKey && _lastProviderHash == providerHash) {
     return _cachedFilteredTasks!;
   }
