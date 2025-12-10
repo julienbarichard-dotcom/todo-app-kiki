@@ -40,14 +40,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   static const Color mintGreen = Color(0xFF1DB679);
 
-  // États des filtres
-  String _triDate = 'proche'; // 'proche', 'lointain'
-  String _filtrePeriode =
+  // Filter states
+  String _dateSortOrder = 'proche'; // 'proche', 'lointain'
+  String _periodFilter =
       'jour'; // 'jour', 'semaine', 'mois', 'continue', 'toutes'
-  String? _filtreEtat; // null, 'en_cours', 'termine'
-  String? _filtreLabel; // null ou nom du label
-  bool? _filtreSousTaches; // null, true (avec), false (sans)
-  String? _filtrePriorite; // null, 'haute', 'moyenne', 'basse'
+  String? _statusFilter; // null, 'en_cours', 'termine'
+  String? _labelFilter; // null ou nom du label
+  bool? _subTasksFilter; // null, true (avec), false (sans)
+  String? _priorityFilter; // null, 'haute', 'moyenne', 'basse'
 
   // Événements sélectionnés pour le carrousel
   List<Outing>? _selectedOutings;
@@ -59,7 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadTasks(); // Charge et reporte automatiquement dans loadTasks()
     // Attendre que le widget soit monté avant d'afficher la popup
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _restaurerSessionCalendar();
+      _restoreCalendarSession();
       _loadOutingsFromShotgun(); // Charger directement depuis Shotgun
     });
   }
@@ -69,7 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Tenter de restaurer automatiquement la session Google Calendar
-  Future<void> _restaurerSessionCalendar() async {
+  Future<void> _restoreCalendarSession() async {
     // Si on veut tester rapidement l'UI sans lancer le flow OAuth Google,
     // active temporairement `disableCalendarAuthForDev = true` dans `lib/config.dart`.
     if (disableCalendarAuthForDev) {
@@ -89,13 +89,13 @@ class _HomeScreenState extends State<HomeScreen> {
         // Toujours demander la connexion Calendar car c'est essentiel
         debugPrint('🔄 Connexion Google Calendar requise...');
         if (mounted) {
-          _afficherPopupConnexionCalendar();
+          _showCalendarConnectionPopup();
         }
       }
     } catch (e) {
       debugPrint('⚠️ Erreur restauration Calendar au démarrage: $e');
       if (mounted) {
-        _afficherPopupConnexionCalendar();
+        _showCalendarConnectionPopup();
       }
     }
   }
@@ -231,7 +231,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // Si besoin plus tard, réimplémenter `_showQuickNoteDialog`.
 
   /// Afficher popup demandant la connexion Google Calendar
-  void _afficherPopupConnexionCalendar() {
+  void _showCalendarConnectionPopup() {
     if (!mounted) return;
 
     showDialog(
@@ -283,7 +283,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 // Attendre un peu puis réafficher
                 Future.delayed(const Duration(seconds: 3), () {
                   if (mounted && !GoogleCalendarService().isAuthenticated) {
-                    _afficherPopupConnexionCalendar();
+                    _showCalendarConnectionPopup();
                   }
                 });
               }
@@ -309,23 +309,23 @@ class _HomeScreenState extends State<HomeScreen> {
     filteredTasks = filteredTasks.where((t) => !t.estComplete).toList();
 
     // Filtre par état
-    if (_filtreEtat == 'en_attente') {
+    if (_statusFilter == 'en_attente') {
       filteredTasks =
           filteredTasks.where((t) => t.statut == Statut.enAttente).toList();
-    } else if (_filtreEtat == 'en_cours') {
+    } else if (_statusFilter == 'en_cours') {
       filteredTasks =
           filteredTasks.where((t) => t.statut == Statut.enCours).toList();
     }
 
     // Filtre par label
-    if (_filtreLabel != null) {
+    if (_labelFilter != null) {
       filteredTasks =
-          filteredTasks.where((t) => t.label == _filtreLabel).toList();
+          filteredTasks.where((t) => t.label == _labelFilter).toList();
     }
 
     // Filtre par sous-tâches
-    if (_filtreSousTaches != null) {
-      if (_filtreSousTaches!) {
+    if (_subTasksFilter != null) {
+      if (_subTasksFilter!) {
         filteredTasks =
             filteredTasks.where((t) => t.subTasks.isNotEmpty).toList();
       } else {
@@ -335,10 +335,10 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     // Filtre par priorité
-    if (_filtrePriorite != null) {
-      final urgence = _filtrePriorite == 'haute'
+    if (_priorityFilter != null) {
+      final urgence = _priorityFilter == 'haute'
           ? Urgence.haute
-          : _filtrePriorite == 'moyenne'
+          : _priorityFilter == 'moyenne'
               ? Urgence.moyenne
               : Urgence.basse;
       filteredTasks =
@@ -346,11 +346,11 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     // Filtre par période
-    if (_filtrePeriode != 'toutes') {
+    if (_periodFilter != 'toutes') {
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
 
-      if (_filtrePeriode == 'jour') {
+      if (_periodFilter == 'jour') {
         // Tâches aujourd'hui
         filteredTasks = filteredTasks.where((t) {
           if (t.dateEcheance == null) return false;
@@ -358,7 +358,7 @@ class _HomeScreenState extends State<HomeScreen> {
               t.dateEcheance!.year, t.dateEcheance!.month, t.dateEcheance!.day);
           return taskDate.isAtSameMomentAs(today);
         }).toList();
-      } else if (_filtrePeriode == 'semaine') {
+      } else if (_periodFilter == 'semaine') {
         // Tâches de la semaine (7 prochains jours)
         final weekEnd = today.add(const Duration(days: 7));
         filteredTasks = filteredTasks.where((t) {
@@ -368,7 +368,7 @@ class _HomeScreenState extends State<HomeScreen> {
           return taskDate.isAfter(today.subtract(const Duration(days: 1))) &&
               taskDate.isBefore(weekEnd);
         }).toList();
-      } else if (_filtrePeriode == 'mois') {
+      } else if (_periodFilter == 'mois') {
         // Tâches du mois (30 prochains jours)
         final monthEnd = today.add(const Duration(days: 30));
         filteredTasks = filteredTasks.where((t) {
@@ -378,7 +378,7 @@ class _HomeScreenState extends State<HomeScreen> {
           return taskDate.isAfter(today.subtract(const Duration(days: 1))) &&
               taskDate.isBefore(monthEnd);
         }).toList();
-      } else if (_filtrePeriode == 'continue') {
+      } else if (_periodFilter == 'continue') {
         // Tâches sans date (continues)
         filteredTasks =
             filteredTasks.where((t) => t.dateEcheance == null).toList();
@@ -389,7 +389,7 @@ class _HomeScreenState extends State<HomeScreen> {
     filteredTasks.sort((a, b) {
       final dateA = a.dateEcheance ?? DateTime(9999);
       final dateB = b.dateEcheance ?? DateTime(9999);
-      return _triDate == 'proche'
+      return _dateSortOrder == 'proche'
           ? dateA.compareTo(dateB)
           : dateB.compareTo(dateA);
     });
@@ -414,7 +414,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: DropdownButton<String>(
-                value: _triDate,
+                value: _dateSortOrder,
                 isExpanded: true,
                 underline: const SizedBox(),
                 dropdownColor: const Color(0xFF1E1E1E),
@@ -426,7 +426,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       value: 'lointain', child: Text('📅 Date lointaine')),
                 ],
                 onChanged: (value) {
-                  if (value != null) setState(() => _triDate = value);
+                  if (value != null) setState(() => _dateSortOrder = value);
                 },
               ),
             ),
@@ -441,7 +441,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: DropdownButton<String>(
-                value: _filtrePeriode,
+                value: _periodFilter,
                 isExpanded: true,
                 underline: const SizedBox(),
                 dropdownColor: const Color(0xFF1E1E1E),
@@ -458,7 +458,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       value: 'continue', child: Text('♾️ Sans date')),
                 ],
                 onChanged: (value) {
-                  if (value != null) setState(() => _filtrePeriode = value);
+                  if (value != null) setState(() => _periodFilter = value);
                 },
               ),
             ),
@@ -473,7 +473,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: DropdownButton<String?>(
-                value: _filtreEtat,
+                value: _statusFilter,
                 isExpanded: true,
                 underline: const SizedBox(),
                 dropdownColor: const Color(0xFF1E1E1E),
@@ -485,7 +485,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   DropdownMenuItem(
                       value: 'en_cours', child: Text('▶️ En cours')),
                 ],
-                onChanged: (value) => setState(() => _filtreEtat = value),
+                onChanged: (value) => setState(() => _statusFilter = value),
               ),
             ),
             const SizedBox(width: 6),
@@ -499,7 +499,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: DropdownButton<String?>(
-                value: _filtrePriorite,
+                value: _priorityFilter,
                 isExpanded: true,
                 underline: const SizedBox(),
                 dropdownColor: const Color(0xFF1E1E1E),
@@ -511,7 +511,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   DropdownMenuItem(value: 'moyenne', child: Text('🟠 Moyenne')),
                   DropdownMenuItem(value: 'basse', child: Text('🟢 Basse')),
                 ],
-                onChanged: (value) => setState(() => _filtrePriorite = value),
+                onChanged: (value) => setState(() => _priorityFilter = value),
               ),
             ),
             const SizedBox(width: 6),
@@ -525,7 +525,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: DropdownButton<bool?>(
-                value: _filtreSousTaches,
+                value: _subTasksFilter,
                 isExpanded: true,
                 underline: const SizedBox(),
                 dropdownColor: const Color(0xFF1E1E1E),
@@ -538,7 +538,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   DropdownMenuItem(
                       value: false, child: Text('❌ Sans sous-tâche')),
                 ],
-                onChanged: (value) => setState(() => _filtreSousTaches = value),
+                onChanged: (value) => setState(() => _subTasksFilter = value),
               ),
             ),
             const SizedBox(width: 6),
@@ -552,7 +552,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: DropdownButton<String?>(
-                value: _filtreLabel,
+                value: _labelFilter,
                 isExpanded: true,
                 underline: const SizedBox(),
                 dropdownColor: const Color(0xFF1E1E1E),
@@ -567,14 +567,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   DropdownMenuItem(value: 'Loisir', child: Text('Loisir')),
                   DropdownMenuItem(value: 'Autre', child: Text('Autre')),
                 ],
-                onChanged: (value) => setState(() => _filtreLabel = value),
+                onChanged: (value) => setState(() => _labelFilter = value),
               ),
             ),
             // Bouton effacer
-            if (_filtreEtat != null ||
-                _filtreLabel != null ||
-                _filtreSousTaches != null ||
-                _filtrePriorite != null) ...[
+            if (_statusFilter != null ||
+                _labelFilter != null ||
+                _subTasksFilter != null ||
+                _priorityFilter != null) ...[
               const SizedBox(width: 6),
               IconButton(
                 icon: const Icon(Icons.clear, size: 18),
@@ -583,10 +583,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                 onPressed: () {
                   setState(() {
-                    _filtreEtat = null;
-                    _filtreLabel = null;
-                    _filtreSousTaches = null;
-                    _filtrePriorite = null;
+                    _statusFilter = null;
+                    _labelFilter = null;
+                    _subTasksFilter = null;
+                    _priorityFilter = null;
                   });
                 },
               ),
