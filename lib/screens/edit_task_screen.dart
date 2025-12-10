@@ -26,6 +26,8 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
   String? _labelSelectionne;
   late Statut _statutSelectionne;
   late bool _isMultiValidation;
+  late bool _notificationEnabled;
+  int? _notificationMinutesBefore = 0;
 
   static const Color mintGreen = Color(0xFF1DB679);
 
@@ -43,6 +45,8 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
     _labelSelectionne = widget.tache.label;
     _statutSelectionne = widget.tache.statut;
     _isMultiValidation = widget.tache.isMultiValidation;
+    _notificationEnabled = widget.tache.notificationEnabled;
+    _notificationMinutesBefore = widget.tache.notificationMinutesBefore ?? 0;
   }
 
   @override
@@ -490,6 +494,49 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
 
             const SizedBox(height: 16),
 
+            // Notification in-app
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.notifications_active,
+                            color: mintGreen),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Notification',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const Spacer(),
+                        Switch(
+                          value: _notificationEnabled,
+                          onChanged: (value) {
+                            setState(() {
+                              _notificationEnabled = value;
+                            });
+                          },
+                          activeColor: mintGreen,
+                        ),
+                      ],
+                    ),
+                    if (_notificationEnabled)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 8),
+                        child: Text(
+                          'Rappel à l\'heure de l\'échéance (pas de minutage).',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
             // Sous-tâches
             Card(
               child: Padding(
@@ -703,6 +750,9 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
           : widget.tache.validations,
       comments: widget.tache.comments,
       isRejected: widget.tache.isRejected,
+      notificationEnabled: _notificationEnabled,
+      notificationMinutesBefore:
+          _notificationEnabled ? (_notificationMinutesBefore ?? 0) : null,
     );
 
     debugPrint('🔍 Date avant modification: ${widget.tache.dateEcheance}');

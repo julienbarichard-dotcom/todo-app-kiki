@@ -34,7 +34,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
   // Paramètres de notifications
   bool _notificationEnabled = false;
-  int? _notificationMinutesBefore = 30;
+  int? _notificationMinutesBefore = 0; // rappel à l'heure exacte
 
   // Multi-validation collaborative
   bool _isMultiValidation = false;
@@ -53,7 +53,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       _dateSelectionnee = task.dateEcheance;
       _assignedToPrenoms.addAll(task.assignedTo);
       _notificationEnabled = task.notificationEnabled;
-      _notificationMinutesBefore = task.notificationMinutesBefore;
+      _notificationMinutesBefore = task.notificationMinutesBefore ?? 0;
       _subTasks.addAll(task.subTasks);
       _labelSelectionne = task.label;
       _statutSelectionne = task.statut;
@@ -500,23 +500,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               ],
             ),
             if (_notificationEnabled) ...[
-              const SizedBox(height: 12),
-              const Text('Rappel (minutes avant) :'),
               const SizedBox(height: 8),
-              DropdownButton<int>(
-                value: _notificationMinutesBefore ?? 30,
-                onChanged: (value) =>
-                    setState(() => _notificationMinutesBefore = value),
-                items: [5, 15, 30, 60, 120, 1440]
-                    .map((minutes) => DropdownMenuItem(
-                          value: minutes,
-                          child: Text(minutes == 1440
-                              ? '1 jour'
-                              : minutes >= 60
-                                  ? '${minutes ~/ 60}h'
-                                  : '$minutes min'),
-                        ))
-                    .toList(),
+              const Text(
+                'Le rappel se fera à l\'heure de l\'échéance (pas de minutage).',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
             ],
           ],
@@ -691,7 +678,8 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         label: _labelSelectionne,
         statut: _statutSelectionne,
         notificationEnabled: _notificationEnabled,
-        notificationMinutesBefore: _notificationMinutesBefore,
+        notificationMinutesBefore:
+            _notificationEnabled ? (_notificationMinutesBefore ?? 0) : null,
       );
       await todoProvider.modifierTache(updatedTask);
     } else {
@@ -708,7 +696,8 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         label: _labelSelectionne,
         statut: _statutSelectionne,
         notificationEnabled: _notificationEnabled,
-        notificationMinutesBefore: _notificationMinutesBefore,
+        notificationMinutesBefore:
+            _notificationEnabled ? (_notificationMinutesBefore ?? 0) : null,
         isMultiValidation: _isMultiValidation,
         validations: _isMultiValidation
             ? {for (var p in _assignedToPrenoms) p: false}
