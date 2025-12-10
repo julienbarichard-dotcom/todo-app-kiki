@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:async';
 import '../models/todo_task.dart';
 import '../services/supabase_service.dart';
 import '../services/google_calendar_service.dart';
+import '../services/notification_service_interface.dart';
+import '../services/notification_service_noop.dart';
+import '../services/notification_service_mobile.dart' as notif_mobile;
+import '../services/notification_service_web.dart' as notif_web;
 
 /// Provider pour gérer les tâches avec Supabase
 class TodoProvider extends ChangeNotifier {
   List<TodoTask> _taches = [];
   Timer? _pollTimer;
+
+  // Service de notifications (lazy-init)
+  NotificationServiceInterface? _notificationService;
 
   List<TodoTask> get taches => _taches;
   List<TodoTask> get tachesTriees => _taches;
@@ -175,6 +183,43 @@ class TodoProvider extends ChangeNotifier {
     }
   }
 
+  // --- Notifications locales (in-app) ---
+  Future<NotificationServiceInterface> _getNotificationService() async {
+    if (_notificationService != null) return _notificationService!;
+
+    try {
+      if (kIsWeb) {
+        _notificationService = notif_web.NotificationService();
+      } else {
+        _notificationService = notif_mobile.NotificationService();
+      }
+      await _notificationService!.init();
+    } catch (e) {
+      debugPrint('⚠️ Init notification service failed, fallback noop: $e');
+      _notificationService = NotificationServiceNoop();
+    }
+    return _notificationService!;
+  }
+
+  Future<void> _handleNotificationForTask(TodoTask tache) async {
+    try {
+      final service = await _getNotificationService();
+
+      final shouldSchedule = tache.notificationEnabled &&
+          tache.dateEcheance != null &&
+          !tache.estComplete;
+
+      if (!shouldSchedule) {
+        await service.cancelNotification(tache.id.hashCode);
+        return;
+      }
+
+      await service.scheduleNotificationForTask(tache);
+    } catch (e) {
+      debugPrint('⚠️ Notification handling failed: $e');
+    }
+  }
+
   /// Fonction simplifiée pour compatibilité
   void subscribeToTaskUpdates() {
     // Polling fallback: refresh tâches toutes les 8 secondes.
@@ -216,6 +261,9 @@ class TodoProvider extends ChangeNotifier {
       if (tache.dateEcheance != null) {
         await googleCalendarService.createEventFromTask(tache);
       }
+
+      // Planifier notification locale si activée
+      await _handleNotificationForTask(tache);
     } catch (e) {
       debugPrint('Erreur ajout tâche: $e');
     }
@@ -224,6 +272,14 @@ class TodoProvider extends ChangeNotifier {
   /// Supprimer une tâche
   Future<void> supprimerTache(String id) async {
     try {
+      // Annuler notification associée avant suppression
+      try {
+        final service = await _getNotificationService();
+        await service.cancelNotification(id.hashCode);
+      } catch (e) {
+        debugPrint('⚠️ Annulation notif avant suppression: $e');
+      }
+
       await supabaseService.tasksTable.delete().eq('id', id);
       _taches.removeWhere((t) => t.id == id);
       notifyListeners();
@@ -268,6 +324,9 @@ class TodoProvider extends ChangeNotifier {
       }
       _triageParUrgenceDate();
       notifyListeners();
+
+      // Gérer notification locale (planifier/annuler)
+      await _handleNotificationForTask(tache);
     } catch (e) {
       debugPrint('Erreur modification tâche: $e');
     }

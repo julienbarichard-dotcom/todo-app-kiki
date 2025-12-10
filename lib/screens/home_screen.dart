@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../utils/color_extensions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
+import 'package:intl/intl.dart';
 // Import conditionnel : 'dart:html' sur le web, stub sur les autres plateformes
 import '../src/html_stub.dart' if (dart.library.html) 'dart:html' as html;
 import '../models/todo_task.dart';
@@ -56,10 +57,12 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Outing>? _selectedOutings;
   bool _isLoadingOutings = false;
 
+  bool _hasShownNotificationPopup = false;
+
   @override
   void initState() {
     super.initState();
-    _chargerTaches(); // Charge et reporte automatiquement dans loadTaches()
+    _chargerTachesEtNotifications(); // Charge et reporte automatiquement dans loadTaches()
     // Attendre que le widget soit monté avant d'afficher la popup
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _restaurerSessionCalendar();
@@ -67,8 +70,155 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Future<void> _chargerTaches() async {
+  Future<void> _chargerTachesEtNotifications() async {
     await context.read<TodoProvider>().loadTaches();
+    if (!mounted) return;
+    await _showNotificationPopupIfNeeded();
+  }
+
+  Future<void> _showNotificationPopupIfNeeded() async {
+    if (_hasShownNotificationPopup) return;
+
+    final tachesNotif = context
+        .read<TodoProvider>()
+        .taches
+        .where((t) => t.notificationEnabled && !t.estComplete)
+        .toList();
+
+    if (tachesNotif.isEmpty) return;
+    _hasShownNotificationPopup = true;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Notifications activées'),
+          content: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Tâches pour lesquelles la notification in-app est active :',
+                  style: TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 12),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 320),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: tachesNotif.length,
+                    separatorBuilder: (_, __) => const Divider(height: 12),
+                    itemBuilder: (context, index) {
+                      final t = tachesNotif[index];
+                      final dateText = t.dateEcheance != null
+                          ? DateFormat('dd/MM HH:mm').format(t.dateEcheance!)
+                          : 'Sans échéance';
+                      return ListTile(
+                        dense: true,
+                        title: Text(t.titre),
+                        subtitle: Text(dateText),
+                        leading: Icon(Icons.notifications_active,
+                            color: t.urgence.color),
+                        trailing: TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            _showTaskQuickView(t);
+                          },
+                          child: const Text('Voir'),
+                        ),
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          _showTaskQuickView(t);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Fermer'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showTaskQuickView(TodoTask tache) {
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) {
+        final dateText = tache.dateEcheance != null
+            ? DateFormat('EEEE dd MMM HH:mm', 'fr_FR')
+                .format(tache.dateEcheance!)
+            : 'Sans échéance';
+        final assigne = tache.assignedTo.isEmpty
+            ? 'Non assignée'
+            : tache.assignedTo.join(', ');
+
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.circle, color: tache.urgence.color, size: 14),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      tache.titre,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(dateText, style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(height: 8),
+              if (tache.description.isNotEmpty)
+                Text(
+                  tache.description,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              const SizedBox(height: 8),
+              Text('Assignée à : $assigne'),
+              const SizedBox(height: 12),
+              if (tache.notificationEnabled)
+                Row(
+                  children: [
+                    const Icon(Icons.notifications_active, size: 18),
+                    const SizedBox(width: 6),
+                    Text(
+                      tache.notificationMinutesBefore != null
+                          ? 'Notification ${tache.notificationMinutesBefore} min avant'
+                          : 'Notification activée',
+                    ),
+                  ],
+                ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Fermer'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   /// Tenter de restaurer automatiquement la session Google Calendar
