@@ -319,6 +319,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Calculate hash of task list state for cache validation
+  /// Note: Uses task IDs only. This is sufficient because:
+  /// 1. When tasks are added/removed, IDs change → cache invalidates
+  /// 2. When task properties change (status, date, etc.), the TodoProvider
+  ///    calls notifyListeners(), causing Consumer to rebuild with new data
+  /// 3. The cache only helps avoid redundant filtering during widget rebuilds
+  ///    that happen for OTHER reasons (e.g., local state changes)
   int _calculateProviderHash(List<TodoTask> taches) {
     return Object.hashAll(taches.map((t) => t.id));
   }
