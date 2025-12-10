@@ -55,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Cache for filtered tasks to avoid recalculation on every rebuild
   List<TodoTask>? _cachedFilteredTasks;
-  String? _lastFilterKey;
+  int? _lastFilterKey; // Changed to int for direct hash comparison
   int _lastProviderHash = 0; // Track provider state changes
 
   @override
@@ -309,25 +309,25 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Applique tous les filtres sur la liste de tâches
   /// Optimized with caching to avoid redundant filter operations
   List<TodoTask> _appliquerFiltres(List<TodoTask> taches) {
-    // Create a simple hash of task list state
-    // Using Object.hashAll for efficient hash computation
-    final providerHash = Object.hashAll(taches.map((t) => t.id));
-    
-    // Create filter key combining filter state
-    final filterKey = Object.hashAll([
-      _triDate,
-      _filtrePeriode,
-      _filtreEtat ?? '',
-      _filtreLabel ?? '',
-      _filtreSousTaches?.toString() ?? '',
-      _filtrePriorite ?? '',
-    ]).toString();
-    
-    // Return cached result if neither filters nor tasks have changed
-    if (_lastFilterKey == filterKey && 
-        _lastProviderHash == providerHash && 
-        _cachedFilteredTasks != null) {
-      return _cachedFilteredTasks!;
+    // Quick exit if cache exists - avoid unnecessary hash computations
+    if (_cachedFilteredTasks != null) {
+      // Create filter key combining filter state (as int for efficient comparison)
+      final filterKey = Object.hashAll([
+        _triDate,
+        _filtrePeriode,
+        _filtreEtat ?? '',
+        _filtreLabel ?? '',
+        _filtreSousTaches?.toString() ?? '',
+        _filtrePriorite ?? '',
+      ]);
+      
+      // Create a simple hash of task list state using task IDs
+      final providerHash = Object.hashAll(taches.map((t) => t.id));
+      
+      // Return cached result if neither filters nor tasks have changed
+      if (_lastFilterKey == filterKey && _lastProviderHash == providerHash) {
+        return _cachedFilteredTasks!;
+      }
     }
     
     var tachesFiltrees = List<TodoTask>.from(taches);
@@ -421,7 +421,17 @@ class _HomeScreenState extends State<HomeScreen> {
           : dateB.compareTo(dateA);
     });
 
-    // Cache the result along with provider state
+    // Cache the result along with both hash values for next comparison
+    final filterKey = Object.hashAll([
+      _triDate,
+      _filtrePeriode,
+      _filtreEtat ?? '',
+      _filtreLabel ?? '',
+      _filtreSousTaches?.toString() ?? '',
+      _filtrePriorite ?? '',
+    ]);
+    final providerHash = Object.hashAll(taches.map((t) => t.id));
+    
     _lastFilterKey = filterKey;
     _lastProviderHash = providerHash;
     _cachedFilteredTasks = tachesFiltrees;
