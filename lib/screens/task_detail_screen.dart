@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../utils/color_extensions.dart';
 import '../models/todo_task.dart';
 import '../providers/todo_provider.dart';
-// Notifications disabled in UI: notification service wrapper is no-op
 
 class TaskDetailScreen extends StatefulWidget {
   final TodoTask tache;
@@ -262,7 +261,44 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                       const SizedBox(height: 24),
                     ],
 
-                    // Date d'échéance and reminders removed from UI
+                    // Date d'échéance
+                    if (widget.tache.dateEcheance != null) ...[
+                      _buildSection(
+                        context,
+                        icon: Icons.calendar_today,
+                        title: 'Date d\'échéance',
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).cardColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.grey.withOpacitySafe(0.3),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.event,
+                                color: mintGreen,
+                                size: 28,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                _formatDate(widget.tache.dateEcheance!),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
 
                     // Assigné à
                     _buildSection(

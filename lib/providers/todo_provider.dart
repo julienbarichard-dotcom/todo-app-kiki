@@ -21,11 +21,16 @@ class TodoProvider extends ChangeNotifier {
           (response as List).map((json) => TodoTask.fromMap(json)).toList();
       debugPrint(
           '🔄 LOAD TACHES: ${_taches.length} tâches chargées depuis Supabase');
-      // Report and reminders disabled: dates/reminders removed from model
+
+      // Reporter automatiquement les tâches passées
+      debugPrint('🔄 LOAD TACHES: Lancement du report automatique...');
+      await _reportOverdueTasks();
+      debugPrint('🔄 LOAD TACHES: Report automatique terminé');
+
       _triageParUrgenceDate();
       notifyListeners();
 
-      // Synchronisation Calendar désactivée (plus de date d'échéance)
+      // Synchroniser avec Calendar si connecté
       await syncWithCalendar();
     } catch (e) {
       debugPrint('Erreur chargement tâches: $e');
@@ -36,8 +41,92 @@ class TodoProvider extends ChangeNotifier {
   /// Les tâches non accomplies avec date AVANT aujourd'hui sont reportées à AUJOURD'HUI
   /// avec le triangle 🔺. Si l'heure existe, elle est conservée.
   Future<void> _reportOverdueTasks() async {
-    // Report automatique désactivé : la gestion des dates/rapels a été supprimée
-    debugPrint('🔍 REPORT AUTO: Désactivé (dateEcheance supprimée)');
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    debugPrint(
+        '🔍 REPORT AUTO: Vérification des tâches en retard (aujourd\'hui = $today)');
+    debugPrint('🔍 REPORT AUTO: Nombre total de tâches: ${_taches.length}');
+
+    int reportCount = 0;
+    for (var tache in _taches) {
+      if (tache.dateEcheance != null && !tache.estComplete) {
+        // Comparer uniquement les DATES (sans l'heure)
+        final echeanceDate = DateTime(
+          tache.dateEcheance!.year,
+          tache.dateEcheance!.month,
+          tache.dateEcheance!.day,
+        );
+
+        debugPrint(
+            '🔍 Tâche "${tache.titre}": échéance=$echeanceDate, complète=${tache.estComplete}, isReported=${tache.isReported}');
+
+        // SEULEMENT si la date est STRICTEMENT AVANT aujourd'hui
+        if (echeanceDate.isBefore(today)) {
+          reportCount++;
+
+          // Conserver l'heure si elle existe (pas 00:00:00)
+          DateTime newDate;
+          if (tache.dateEcheance!.hour != 0 ||
+              tache.dateEcheance!.minute != 0 ||
+              tache.dateEcheance!.second != 0) {
+            // Il y a une heure : reporter avec la même heure
+            newDate = DateTime(
+              today.year,
+              today.month,
+              today.day,
+              tache.dateEcheance!.hour,
+              tache.dateEcheance!.minute,
+              tache.dateEcheance!.second,
+            );
+            debugPrint(
+                '⏰ Tâche "${tache.titre}" reportée avec heure: ${tache.dateEcheance!.hour}:${tache.dateEcheance!.minute}');
+          } else {
+            // Pas d'heure : juste la date
+            newDate = today;
+          }
+
+          final updatedTask = tache.copyWith(
+            dateEcheance: newDate,
+            isReported: true, // 🔺 Triangle visible car reportée
+          );
+
+          try {
+            await supabaseService.tasksTable
+                .update(updatedTask.toMap())
+                .eq('id', tache.id);
+
+            // Mettre à jour localement
+            final index = _taches.indexWhere((t) => t.id == tache.id);
+            if (index != -1) {
+              _taches[index] = updatedTask;
+            }
+
+            // 📅 Synchroniser avec Google Calendar : mettre à jour la date de l'événement
+            if (googleCalendarService.isAuthenticated) {
+              try {
+                await googleCalendarService.updateEventFromTask(updatedTask);
+                debugPrint(
+                    '📅 Google Calendar mis à jour pour "${tache.titre}"');
+              } catch (e) {
+                debugPrint('⚠️ Erreur sync Calendar pour "${tache.titre}": $e');
+              }
+            }
+
+            debugPrint(
+                '✅ Tâche "${tache.titre}" reportée de $echeanceDate à $newDate (🔺 triangle actif)');
+          } catch (e) {
+            debugPrint('❌ Erreur report tâche ${tache.id}: $e');
+          }
+        } else if (echeanceDate.isAtSameMomentAs(today)) {
+          // La tâche est déjà à aujourd'hui : PAS de report, PAS de triangle
+          debugPrint(
+              '📅 Tâche "${tache.titre}" à aujourd\'hui (pas de report)');
+        }
+      }
+    }
+
+    debugPrint('🔍 REPORT AUTO: Total reporté: $reportCount tâches');
   }
 
   /// Forcer le report des tâches en retard (pour test manuel)
@@ -48,8 +137,42 @@ class TodoProvider extends ChangeNotifier {
 
   /// Synchroniser les tâches avec Google Calendar (bidirectionnel)
   Future<void> syncWithCalendar() async {
-    // Synchronisation Calendar désactivée : plus de date d'échéance à gérer
-    debugPrint('🔄 Sync Calendar: désactivée (dateEcheance supprimée)');
+    if (!googleCalendarService.isAuthenticated) return;
+
+    try {
+      // Récupérer les taskIds présents dans Calendar
+      final calendarTaskIds =
+          await googleCalendarService.getAllCalendarTaskIds();
+
+      // Trouver les tâches locales qui ont un événement Calendar supprimé
+      final tasksToClean = <TodoTask>[];
+      for (var tache in _taches) {
+        if (tache.dateEcheance != null && !calendarTaskIds.contains(tache.id)) {
+          // L'événement Calendar a été supprimé manuellement
+          tasksToClean.add(tache);
+        }
+      }
+
+      // Option 1: Supprimer ces tâches (sync strict)
+      // for (var tache in tasksToClean) {
+      //   await supprimerTache(tache.id);
+      // }
+
+      // Option 2: Juste retirer la date (sync doux - préféré)
+      for (var tache in tasksToClean) {
+        final updated = tache.copyWith(dateEcheance: null);
+        await modifierTache(updated);
+        debugPrint(
+            '🔄 Sync: Date retirée pour "${tache.titre}" (événement Calendar supprimé)');
+      }
+
+      if (tasksToClean.isNotEmpty) {
+        debugPrint(
+            '✅ Synchronisation bidirectionnelle: ${tasksToClean.length} tâche(s) mise(s) à jour');
+      }
+    } catch (e) {
+      debugPrint('Erreur synchronisation Calendar: $e');
+    }
   }
 
   /// Fonction simplifiée pour compatibilité
@@ -88,7 +211,11 @@ class TodoProvider extends ChangeNotifier {
       _taches.add(tache);
       _triageParUrgenceDate();
       notifyListeners();
-      // Date/reminders removed: no calendar event creation or reminders
+
+      // Synchroniser avec Google Calendar si la tâche a une date
+      if (tache.dateEcheance != null) {
+        await googleCalendarService.createEventFromTask(tache);
+      }
     } catch (e) {
       debugPrint('Erreur ajout tâche: $e');
     }
@@ -97,20 +224,12 @@ class TodoProvider extends ChangeNotifier {
   /// Supprimer une tâche
   Future<void> supprimerTache(String id) async {
     try {
-      // Récupérer la tâche localement (pour annuler ses rappels)
-      final index = _taches.indexWhere((t) => t.id == id);
-      final TodoTask? task = index != -1 ? _taches[index] : null;
-
       await supabaseService.tasksTable.delete().eq('id', id);
-
-      if (index != -1) {
-        _taches.removeAt(index);
-      }
+      _taches.removeWhere((t) => t.id == id);
       notifyListeners();
 
       // Supprimer de Google Calendar
       await googleCalendarService.deleteEventFromTask(id);
-      // Reminders canceled client-side removed
     } catch (e) {
       debugPrint('Erreur suppression tâche: $e');
     }
@@ -131,8 +250,20 @@ class TodoProvider extends ChangeNotifier {
         // Si la tâche vient d'être marquée comme terminée, supprimer l'événement Calendar
         if (!oldTache.estComplete && tache.estComplete) {
           debugPrint(
-              'Tâche "${tache.titre}" marquée terminée - suppression événement Calendar (si existant)');
+              'Tâche "${tache.titre}" marquée terminée - suppression événement Calendar');
           await googleCalendarService.deleteEventFromTask(tache.id);
+        }
+        // Si la tâche est réouverte (estComplete false) et a une date, recréer l'événement
+        else if (oldTache.estComplete &&
+            !tache.estComplete &&
+            tache.dateEcheance != null) {
+          debugPrint(
+              'Tâche "${tache.titre}" réouverte - recréation événement Calendar');
+          await googleCalendarService.updateEventFromTask(tache);
+        }
+        // Sinon mise à jour normale
+        else {
+          await googleCalendarService.updateEventFromTask(tache);
         }
       }
       _triageParUrgenceDate();
@@ -177,14 +308,27 @@ class TodoProvider extends ChangeNotifier {
 
   /// Nombre de tâches pour aujourd'hui pour une personne
   int countTasksTodayFor(String prenom) {
-    // Date-based counts disabled: due dates removed
-    return 0;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return _taches.where((t) {
+      if (!t.assignedTo.contains(prenom)) return false;
+      if (t.dateEcheance == null) return false;
+      final d = DateTime(
+          t.dateEcheance!.year, t.dateEcheance!.month, t.dateEcheance!.day);
+      return d == today && !t.estComplete;
+    }).length;
   }
 
   /// Nombre de tâches pour aujourd'hui (tous utilisateurs)
   int countTasksTodayAll() {
-    // Date-based counts disabled: due dates removed
-    return 0;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return _taches.where((t) {
+      if (t.dateEcheance == null) return false;
+      final d = DateTime(
+          t.dateEcheance!.year, t.dateEcheance!.month, t.dateEcheance!.day);
+      return d == today && !t.estComplete;
+    }).length;
   }
 
   /// Nombre de tâches reportées (isReported true) (tous utilisateurs)
@@ -215,8 +359,15 @@ class TodoProvider extends ChangeNotifier {
 
   /// Nombre de tâches en retard pour une personne
   int countOverdueFor(String prenom) {
-    // Overdue counts disabled: due dates removed
-    return 0;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return _taches.where((t) {
+      if (!t.assignedTo.contains(prenom)) return false;
+      if (t.dateEcheance == null) return false;
+      final d = DateTime(
+          t.dateEcheance!.year, t.dateEcheance!.month, t.dateEcheance!.day);
+      return d.isBefore(today) && !t.estComplete;
+    }).length;
   }
 
   /// Pourcentage de tâches complétées pour une personne (0.0 - 100.0)
@@ -230,13 +381,13 @@ class TodoProvider extends ChangeNotifier {
 
   /// Trier par urgence + date
   void _triageParUrgenceDate() {
-    // Trier par urgence, puis par date de création pour stabilité
     _taches.sort((a, b) {
       final urgenceOrder = {'haute': 0, 'moyenne': 1, 'basse': 2};
       final aOrder = urgenceOrder[a.urgence.label] ?? 2;
       final bOrder = urgenceOrder[b.urgence.label] ?? 2;
       if (aOrder != bOrder) return aOrder.compareTo(bOrder);
-      return b.dateCreation.compareTo(a.dateCreation);
+      return (b.dateEcheance ?? DateTime(9999))
+          .compareTo(a.dateEcheance ?? DateTime(9999));
     });
   }
 }

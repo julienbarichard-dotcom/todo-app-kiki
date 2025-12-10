@@ -4,7 +4,6 @@ import 'package:uuid/uuid.dart';
 import '../models/todo_task.dart';
 import '../providers/todo_provider.dart';
 import '../providers/user_provider.dart';
-// ReminderPicker removed: notifications are controlled via Switch + minutes dropdown
 
 /// Écran pour créer ou modifier une tâche
 class AddTaskScreen extends StatefulWidget {
@@ -26,6 +25,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
   // Valeurs sélectionnées
   Urgence _urgenceSelectionnee = Urgence.moyenne;
+  DateTime? _dateSelectionnee;
   final List<String> _assignedToPrenoms = [];
   final List<SubTask> _subTasks = [];
   final _subTaskController = TextEditingController();
@@ -33,10 +33,8 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   Statut _statutSelectionne = Statut.enAttente;
 
   // Paramètres de notifications
-  // Paramètres de notifications supprimés de l'UI (rappels désactivés)
-
-  // Rappels personnalisés (liste JSON)
-  // Reminders list removed to avoid duplication with notificationEnabled
+  bool _notificationEnabled = false;
+  int? _notificationMinutesBefore = 30;
 
   // Multi-validation collaborative
   bool _isMultiValidation = false;
@@ -52,9 +50,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       _titreController.text = task.titre;
       _descriptionController.text = task.description;
       _urgenceSelectionnee = task.urgence;
-      // dateEcheance removed from UI
+      _dateSelectionnee = task.dateEcheance;
       _assignedToPrenoms.addAll(task.assignedTo);
-      // notification fields intentionally not loaded into the edit form
+      _notificationEnabled = task.notificationEnabled;
+      _notificationMinutesBefore = task.notificationMinutesBefore;
       _subTasks.addAll(task.subTasks);
       _labelSelectionne = task.label;
       _statutSelectionne = task.statut;
@@ -134,11 +133,12 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
             _buildMultiValidationSection(mintGreen),
             const SizedBox(height: 16),
 
-            // Date d'échéance: removed from UI
-
-            // Paramètres de notifications (activation + délai)
-            _buildNotificationSection(mintGreen),
+            // Date d'échéance
+            _buildDatePickerSection(context),
             const SizedBox(height: 16),
+
+            // Paramètres de notifications
+            _buildNotificationSection(mintGreen),
             const SizedBox(height: 16),
 
             // Sous-tâches
@@ -345,7 +345,139 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     );
   }
 
-  // Date picker removed from UI
+  Widget _buildDatePickerSection(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Date d\'échéance (optionnelle)',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _dateSelectionnee != null
+                        ? _formatDateTime(_dateSelectionnee!)
+                        : 'Pas de date',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: _dateSelectionnee != null
+                          ? Colors.black87
+                          : Colors.grey[600],
+                    ),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: _pickDateTime,
+                  icon: const Icon(Icons.calendar_today),
+                  label: const Text('Choisir'),
+                ),
+                if (_dateSelectionnee != null)
+                  IconButton(
+                    onPressed: () => setState(() => _dateSelectionnee = null),
+                    icon: const Icon(Icons.close, color: Colors.red),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickDateTime() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _dateSelectionnee ?? DateTime.now(),
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime(2100),
+    );
+    if (date == null || !mounted) return;
+
+    // Dialog pour saisir l'heure au lieu du time picker avec aiguilles
+    int selectedHour = (_dateSelectionnee?.hour) ?? DateTime.now().hour;
+    int selectedMinute = (_dateSelectionnee?.minute) ?? 0;
+
+    final time = await showDialog<TimeOfDay>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Sélectionner l\'heure'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Affichage de l'heure sélectionnée
+              Text(
+                '${selectedHour.toString().padLeft(2, '0')}:${selectedMinute.toString().padLeft(2, '0')}',
+                style:
+                    const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              // Sliders pour heure et minutes
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      children: [
+                        const Text('Heure'),
+                        Slider(
+                          value: selectedHour.toDouble(),
+                          min: 0,
+                          max: 23,
+                          divisions: 23,
+                          onChanged: (value) =>
+                              setState(() => selectedHour = value.toInt()),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        const Text('Minutes'),
+                        Slider(
+                          value: selectedMinute.toDouble(),
+                          min: 0,
+                          max: 59,
+                          divisions: 59,
+                          onChanged: (value) =>
+                              setState(() => selectedMinute = value.toInt()),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context,
+                  TimeOfDay(hour: selectedHour, minute: selectedMinute)),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (time == null) return;
+    if (!mounted) return;
+
+    setState(() {
+      _dateSelectionnee =
+          DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    });
+  }
 
   Widget _buildNotificationSection(Color mintGreen) {
     return Card(
@@ -353,11 +485,40 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text('Rappels', style: TextStyle(fontWeight: FontWeight.bold)),
-            SizedBox(height: 8),
-            Text('Les rappels ont été désactivés dans cette application.',
-                style: TextStyle(color: Colors.grey)),
+          children: [
+            Row(
+              children: [
+                const Text('Activer notification',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                const Spacer(),
+                Switch(
+                  value: _notificationEnabled,
+                  onChanged: (value) =>
+                      setState(() => _notificationEnabled = value),
+                  activeThumbColor: mintGreen,
+                ),
+              ],
+            ),
+            if (_notificationEnabled) ...[
+              const SizedBox(height: 12),
+              const Text('Rappel (minutes avant) :'),
+              const SizedBox(height: 8),
+              DropdownButton<int>(
+                value: _notificationMinutesBefore ?? 30,
+                onChanged: (value) =>
+                    setState(() => _notificationMinutesBefore = value),
+                items: [5, 15, 30, 60, 120, 1440]
+                    .map((minutes) => DropdownMenuItem(
+                          value: minutes,
+                          child: Text(minutes == 1440
+                              ? '1 jour'
+                              : minutes >= 60
+                                  ? '${minutes ~/ 60}h'
+                                  : '$minutes min'),
+                        ))
+                    .toList(),
+              ),
+            ],
           ],
         ),
       ),
@@ -524,29 +685,30 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         titre: _titreController.text,
         description: _descriptionController.text,
         urgence: _urgenceSelectionnee,
+        dateEcheance: _dateSelectionnee,
         assignedTo: _assignedToPrenoms,
         subTasks: _subTasks,
         label: _labelSelectionne,
         statut: _statutSelectionne,
-        // reminders intentionally kept null: notifications are driven by
-        // `notificationEnabled` and `notificationMinutesBefore`.
-        reminders: null,
+        notificationEnabled: _notificationEnabled,
+        notificationMinutesBefore: _notificationMinutesBefore,
       );
       await todoProvider.modifierTache(updatedTask);
     } else {
       // Créer une nouvelle tâche
-
       final newTask = TodoTask(
         id: const Uuid().v4(),
         titre: _titreController.text,
         description: _descriptionController.text,
         urgence: _urgenceSelectionnee,
+        dateEcheance: _dateSelectionnee,
         assignedTo: _assignedToPrenoms,
         dateCreation: DateTime.now(),
         subTasks: _subTasks,
         label: _labelSelectionne,
         statut: _statutSelectionne,
-        reminders: null,
+        notificationEnabled: _notificationEnabled,
+        notificationMinutesBefore: _notificationMinutesBefore,
         isMultiValidation: _isMultiValidation,
         validations: _isMultiValidation
             ? {for (var p in _assignedToPrenoms) p: false}
