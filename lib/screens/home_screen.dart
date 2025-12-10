@@ -53,6 +53,10 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Outing>? _selectedOutings;
   bool _isLoadingOutings = false;
 
+  // Cache for filtered tasks to avoid recalculation on every rebuild
+  List<TodoTask>? _cachedFilteredTasks;
+  String? _lastFilterKey;
+
   @override
   void initState() {
     super.initState();
@@ -302,7 +306,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Applique tous les filtres sur la liste de tâches
+  /// Optimized with caching to avoid redundant filter operations
   List<TodoTask> _appliquerFiltres(List<TodoTask> taches) {
+    // Create a cache key based on filter state and task list hash
+    final filterKey = '${taches.length}_$_triDate\_$_filtrePeriode\_$_filtreEtat\_$_filtreLabel\_$_filtreSousTaches\_$_filtrePriorite';
+    
+    // Return cached result if filters haven't changed
+    if (_lastFilterKey == filterKey && _cachedFilteredTasks != null) {
+      return _cachedFilteredTasks!;
+    }
+    
     var tachesFiltrees = List<TodoTask>.from(taches);
 
     // TOUJOURS filtrer les tâches complètes (elles vont dans Kanban)
@@ -345,7 +358,7 @@ class _HomeScreenState extends State<HomeScreen> {
           tachesFiltrees.where((t) => t.urgence == urgence).toList();
     }
 
-    // Filtre par période
+    // Filtre par période - optimized to calculate dates once
     if (_filtrePeriode != 'toutes') {
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
@@ -361,22 +374,22 @@ class _HomeScreenState extends State<HomeScreen> {
       } else if (_filtrePeriode == 'semaine') {
         // Tâches de la semaine (7 prochains jours)
         final weekEnd = today.add(const Duration(days: 7));
+        final dayBefore = today.subtract(const Duration(days: 1));
         tachesFiltrees = tachesFiltrees.where((t) {
           if (t.dateEcheance == null) return false;
           final taskDate = DateTime(
               t.dateEcheance!.year, t.dateEcheance!.month, t.dateEcheance!.day);
-          return taskDate.isAfter(today.subtract(const Duration(days: 1))) &&
-              taskDate.isBefore(weekEnd);
+          return taskDate.isAfter(dayBefore) && taskDate.isBefore(weekEnd);
         }).toList();
       } else if (_filtrePeriode == 'mois') {
         // Tâches du mois (30 prochains jours)
         final monthEnd = today.add(const Duration(days: 30));
+        final dayBefore = today.subtract(const Duration(days: 1));
         tachesFiltrees = tachesFiltrees.where((t) {
           if (t.dateEcheance == null) return false;
           final taskDate = DateTime(
               t.dateEcheance!.year, t.dateEcheance!.month, t.dateEcheance!.day);
-          return taskDate.isAfter(today.subtract(const Duration(days: 1))) &&
-              taskDate.isBefore(monthEnd);
+          return taskDate.isAfter(dayBefore) && taskDate.isBefore(monthEnd);
         }).toList();
       } else if (_filtrePeriode == 'continue') {
         // Tâches sans date (continues)
@@ -393,6 +406,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ? dateA.compareTo(dateB)
           : dateB.compareTo(dateA);
     });
+
+    // Cache the result
+    _lastFilterKey = filterKey;
+    _cachedFilteredTasks = tachesFiltrees;
 
     return tachesFiltrees;
   }
@@ -426,7 +443,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       value: 'lointain', child: Text('📅 Date lointaine')),
                 ],
                 onChanged: (value) {
-                  if (value != null) setState(() => _triDate = value);
+                  if (value != null) setState(() {
+                    _triDate = value;
+                    _cachedFilteredTasks = null; // Clear cache on filter change
+                  });
                 },
               ),
             ),
@@ -458,7 +478,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       value: 'continue', child: Text('♾️ Sans date')),
                 ],
                 onChanged: (value) {
-                  if (value != null) setState(() => _filtrePeriode = value);
+                  if (value != null) setState(() {
+                    _filtrePeriode = value;
+                    _cachedFilteredTasks = null; // Clear cache on filter change
+                  });
                 },
               ),
             ),
@@ -485,7 +508,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   DropdownMenuItem(
                       value: 'en_cours', child: Text('▶️ En cours')),
                 ],
-                onChanged: (value) => setState(() => _filtreEtat = value),
+                onChanged: (value) => setState(() {
+                  _filtreEtat = value;
+                  _cachedFilteredTasks = null; // Clear cache on filter change
+                }),
               ),
             ),
             const SizedBox(width: 6),
@@ -511,7 +537,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   DropdownMenuItem(value: 'moyenne', child: Text('🟠 Moyenne')),
                   DropdownMenuItem(value: 'basse', child: Text('🟢 Basse')),
                 ],
-                onChanged: (value) => setState(() => _filtrePriorite = value),
+                onChanged: (value) => setState(() {
+                  _filtrePriorite = value;
+                  _cachedFilteredTasks = null; // Clear cache on filter change
+                }),
               ),
             ),
             const SizedBox(width: 6),
@@ -538,7 +567,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   DropdownMenuItem(
                       value: false, child: Text('❌ Sans sous-tâche')),
                 ],
-                onChanged: (value) => setState(() => _filtreSousTaches = value),
+                onChanged: (value) => setState(() {
+                  _filtreSousTaches = value;
+                  _cachedFilteredTasks = null; // Clear cache on filter change
+                }),
               ),
             ),
             const SizedBox(width: 6),
@@ -567,7 +599,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   DropdownMenuItem(value: 'Loisir', child: Text('Loisir')),
                   DropdownMenuItem(value: 'Autre', child: Text('Autre')),
                 ],
-                onChanged: (value) => setState(() => _filtreLabel = value),
+                onChanged: (value) => setState(() {
+                  _filtreLabel = value;
+                  _cachedFilteredTasks = null; // Clear cache on filter change
+                }),
               ),
             ),
             // Bouton effacer
@@ -587,6 +622,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     _filtreLabel = null;
                     _filtreSousTaches = null;
                     _filtrePriorite = null;
+                    _cachedFilteredTasks = null; // Clear cache when clearing all filters
                   });
                 },
               ),

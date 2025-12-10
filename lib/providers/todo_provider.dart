@@ -15,17 +15,12 @@ class TodoProvider extends ChangeNotifier {
   /// Charger les tâches depuis Supabase
   Future<void> loadTaches() async {
     try {
-      debugPrint('🔄 LOAD TACHES: Début du chargement...');
       final response = await supabaseService.tasksTable.select();
       _taches =
           (response as List).map((json) => TodoTask.fromMap(json)).toList();
-      debugPrint(
-          '🔄 LOAD TACHES: ${_taches.length} tâches chargées depuis Supabase');
 
       // Reporter automatiquement les tâches passées
-      debugPrint('🔄 LOAD TACHES: Lancement du report automatique...');
       await _reportOverdueTasks();
-      debugPrint('🔄 LOAD TACHES: Report automatique terminé');
 
       _triageParUrgenceDate();
       notifyListeners();
@@ -44,10 +39,6 @@ class TodoProvider extends ChangeNotifier {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    debugPrint(
-        '🔍 REPORT AUTO: Vérification des tâches en retard (aujourd\'hui = $today)');
-    debugPrint('🔍 REPORT AUTO: Nombre total de tâches: ${_taches.length}');
-
     int reportCount = 0;
     for (var tache in _taches) {
       if (tache.dateEcheance != null && !tache.estComplete) {
@@ -57,9 +48,6 @@ class TodoProvider extends ChangeNotifier {
           tache.dateEcheance!.month,
           tache.dateEcheance!.day,
         );
-
-        debugPrint(
-            '🔍 Tâche "${tache.titre}": échéance=$echeanceDate, complète=${tache.estComplete}, isReported=${tache.isReported}');
 
         // SEULEMENT si la date est STRICTEMENT AVANT aujourd'hui
         if (echeanceDate.isBefore(today)) {
@@ -79,8 +67,6 @@ class TodoProvider extends ChangeNotifier {
               tache.dateEcheance!.minute,
               tache.dateEcheance!.second,
             );
-            debugPrint(
-                '⏰ Tâche "${tache.titre}" reportée avec heure: ${tache.dateEcheance!.hour}:${tache.dateEcheance!.minute}');
           } else {
             // Pas d'heure : juste la date
             newDate = today;
@@ -106,27 +92,20 @@ class TodoProvider extends ChangeNotifier {
             if (googleCalendarService.isAuthenticated) {
               try {
                 await googleCalendarService.updateEventFromTask(updatedTask);
-                debugPrint(
-                    '📅 Google Calendar mis à jour pour "${tache.titre}"');
               } catch (e) {
                 debugPrint('⚠️ Erreur sync Calendar pour "${tache.titre}": $e');
               }
             }
-
-            debugPrint(
-                '✅ Tâche "${tache.titre}" reportée de $echeanceDate à $newDate (🔺 triangle actif)');
           } catch (e) {
             debugPrint('❌ Erreur report tâche ${tache.id}: $e');
           }
-        } else if (echeanceDate.isAtSameMomentAs(today)) {
-          // La tâche est déjà à aujourd'hui : PAS de report, PAS de triangle
-          debugPrint(
-              '📅 Tâche "${tache.titre}" à aujourd\'hui (pas de report)');
         }
       }
     }
 
-    debugPrint('🔍 REPORT AUTO: Total reporté: $reportCount tâches');
+    if (reportCount > 0) {
+      debugPrint('✅ $reportCount tâche(s) reportée(s) automatiquement');
+    }
   }
 
   /// Forcer le report des tâches en retard (pour test manuel)
@@ -176,13 +155,11 @@ class TodoProvider extends ChangeNotifier {
   }
 
   /// Fonction simplifiée pour compatibilité
+  /// Polling interval increased to 2 minutes to reduce server load
   void subscribeToTaskUpdates() {
-    // Polling fallback: refresh tâches toutes les 8 secondes.
     if (_pollTimer != null) return;
-    // Réduire la fréquence de polling pour éviter des appels répétés
-    // lors du développement / en cas de réseau lent.
-    debugPrint('Subscription polling activée (refresh toutes les 30s)');
-    _pollTimer = Timer.periodic(const Duration(seconds: 30), (t) async {
+    // Optimized: Reduced polling frequency from 30s to 120s to minimize unnecessary API calls
+    _pollTimer = Timer.periodic(const Duration(seconds: 120), (t) async {
       try {
         await loadTaches();
       } catch (e) {
