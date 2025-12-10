@@ -56,6 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // Cache for filtered tasks to avoid recalculation on every rebuild
   List<TodoTask>? _cachedFilteredTasks;
   String? _lastFilterKey;
+  int _lastProviderHash = 0; // Track provider state changes
 
   @override
   void initState() {
@@ -308,13 +309,24 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Applique tous les filtres sur la liste de tâches
   /// Optimized with caching to avoid redundant filter operations
   List<TodoTask> _appliquerFiltres(List<TodoTask> taches) {
-    // Create a cache key based on filter state and task list hash
-    // Using hashCode of the task list content to detect when tasks change
-    final tasksHash = taches.map((t) => t.id).join(',').hashCode;
-    final filterKey = '${tasksHash}_${_triDate}_${_filtrePeriode}_${_filtreEtat}_${_filtreLabel}_${_filtreSousTaches}_${_filtrePriorite}';
+    // Create a simple hash of task list state
+    // Using Object.hashAll for efficient hash computation
+    final providerHash = Object.hashAll(taches.map((t) => t.id));
     
-    // Return cached result if filters haven't changed
-    if (_lastFilterKey == filterKey && _cachedFilteredTasks != null) {
+    // Create filter key combining filter state
+    final filterKey = Object.hashAll([
+      _triDate,
+      _filtrePeriode,
+      _filtreEtat ?? '',
+      _filtreLabel ?? '',
+      _filtreSousTaches?.toString() ?? '',
+      _filtrePriorite ?? '',
+    ]).toString();
+    
+    // Return cached result if neither filters nor tasks have changed
+    if (_lastFilterKey == filterKey && 
+        _lastProviderHash == providerHash && 
+        _cachedFilteredTasks != null) {
       return _cachedFilteredTasks!;
     }
     
@@ -409,8 +421,9 @@ class _HomeScreenState extends State<HomeScreen> {
           : dateB.compareTo(dateA);
     });
 
-    // Cache the result
+    // Cache the result along with provider state
     _lastFilterKey = filterKey;
+    _lastProviderHash = providerHash;
     _cachedFilteredTasks = tachesFiltrees;
 
     return tachesFiltrees;

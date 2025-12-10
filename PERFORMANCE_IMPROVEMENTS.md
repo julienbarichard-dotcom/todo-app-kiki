@@ -43,16 +43,29 @@ The `_appliquerFiltres()` method in HomeScreen was recalculating filtered task l
 
 ### Solution
 - **Implemented filter result caching with cache key validation**
-- Added cache fields: `_cachedFilteredTasks` and `_lastFilterKey`
-- Cache is invalidated only when filters change
+- Added cache fields: `_cachedFilteredTasks`, `_lastFilterKey`, and `_lastProviderHash`
+- Cache is invalidated when filters change OR task data changes
+- Uses `Object.hashAll()` for efficient hash computation
 - Location: `lib/screens/home_screen.dart` - `_appliquerFiltres()` method
 
 ```dart
-// Create cache key based on filter state
-final filterKey = '${taches.length}_$_triDate\_$_filtrePeriode\_$_filtreEtat\_$_filtreLabel\_$_filtreSousTaches\_$_filtrePriorite';
+// Create efficient hash of task list state
+final providerHash = Object.hashAll(taches.map((t) => t.id));
 
-// Return cached result if filters haven't changed
-if (_lastFilterKey == filterKey && _cachedFilteredTasks != null) {
+// Create filter key combining filter state
+final filterKey = Object.hashAll([
+  _triDate,
+  _filtrePeriode,
+  _filtreEtat ?? '',
+  _filtreLabel ?? '',
+  _filtreSousTaches?.toString() ?? '',
+  _filtrePriorite ?? '',
+]).toString();
+
+// Return cached result if neither filters nor tasks have changed
+if (_lastFilterKey == filterKey && 
+    _lastProviderHash == providerHash && 
+    _cachedFilteredTasks != null) {
   return _cachedFilteredTasks!;
 }
 ```

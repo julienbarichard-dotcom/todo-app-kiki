@@ -168,6 +168,7 @@ class TodoProvider extends ChangeNotifier {
   ///   doesn't require sub-minute precision.
   void subscribeToTaskUpdates() {
     if (_pollTimer != null) return;
+    // 120 seconds balances responsiveness with performance (see detailed rationale above)
     _pollTimer = Timer.periodic(const Duration(seconds: 120), (t) async {
       try {
         await loadTaches();
