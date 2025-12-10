@@ -6,6 +6,7 @@ import '../providers/todo_provider.dart';
 import '../providers/user_provider.dart';
 import '../widgets/task_form/time_picker_dialog.dart';
 import '../widgets/task_form/multi_validation_section.dart';
+import '../utils/task_form_constants.dart';
 
 /// Écran pour créer ou modifier une tâche
 class AddTaskScreen extends StatefulWidget {
@@ -73,7 +74,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const Color mintGreen = Color(0xFF1DB679);
+    const Color mintGreen = TaskFormConstants.mintGreen;
 
     return Scaffold(
       appBar: AppBar(
@@ -204,15 +205,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   }
 
   Widget _buildLabelSection(Color mintGreen) {
-    const labels = [
-      'Perso',
-      'B2B',
-      'Cuisine',
-      'Administratif',
-      'Loisir',
-      'Autre'
-    ];
-
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -225,7 +217,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: labels.map((label) {
+              children: TaskFormConstants.labels.map((label) {
                 final isSelected = _labelSelectionne == label;
                 return FilterChip(
                   label: Text(label),
@@ -446,14 +438,12 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                 value: _notificationMinutesBefore ?? 30,
                 onChanged: (value) =>
                     setState(() => _notificationMinutesBefore = value),
-                items: [5, 15, 30, 60, 120, 1440]
+                items: TaskFormConstants.notificationMinutes
                     .map((minutes) => DropdownMenuItem(
                           value: minutes,
-                          child: Text(minutes == 1440
-                              ? '1 jour'
-                              : minutes >= 60
-                                  ? '${minutes ~/ 60}h'
-                                  : '$minutes min'),
+                          child: Text(
+                            TaskFormConstants.getNotificationMinutesLabel(minutes),
+                          ),
                         ))
                     .toList(),
               ),

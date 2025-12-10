@@ -6,6 +6,7 @@ import '../providers/user_provider.dart';
 import '../utils/color_extensions.dart';
 import '../widgets/task_form/time_picker_dialog.dart';
 import '../widgets/task_form/multi_validation_section.dart';
+import '../utils/task_form_constants.dart';
 
 class EditTaskScreen extends StatefulWidget {
   final TodoTask tache;
@@ -29,7 +30,7 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
   late Statut _statutSelectionne;
   late bool _isMultiValidation;
 
-  static const Color mintGreen = Color(0xFF1DB679);
+  static const Color mintGreen = TaskFormConstants.mintGreen;
 
   @override
   void initState() {
@@ -257,14 +258,7 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: [
-                        'Perso',
-                        'B2B',
-                        'Cuisine',
-                        'Administratif',
-                        'Loisir',
-                        'Autre',
-                      ].map((label) {
+                      children: TaskFormConstants.labels.map((label) {
                         final isSelected = _labelSelectionne == label;
                         return FilterChip(
                           label: Text(label),
