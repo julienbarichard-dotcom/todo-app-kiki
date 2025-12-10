@@ -100,14 +100,9 @@ class OutingsProvider extends ChangeNotifier {
 
             final date = DateTime.parse(startDate);
 
-            // Log pour debug
-            debugPrint(
-                '📅 Event: ${event['title']} - Date: ${date.day}/${date.month}/${date.year}');
-
             // Ignorer les événements passés de plus de 2h
             if (date.isBefore(now.subtract(const Duration(hours: 2)))) {
               skipped++;
-              debugPrint('  ⏭️ Skip (passé)');
               continue;
             }
 
@@ -164,7 +159,6 @@ class OutingsProvider extends ChangeNotifier {
     // Si forceNew = true, on reset et on recalcule
     if (forceNew) {
       _dailyOutings.clear();
-      debugPrint('🔄 Force nouveau calcul avec préférences: $preferences');
     } else if (_dailyOutings.isNotEmpty) {
       // Retourner la sélection existante
       return List.unmodifiable(_dailyOutings);
@@ -172,8 +166,6 @@ class OutingsProvider extends ChangeNotifier {
 
     final prefs = preferences.map((e) => e.toLowerCase()).toSet();
     final now = DateTime.now();
-
-    debugPrint('🔍 Recherche parmi ${_outings.length} événements...');
 
     // Événements d'aujourd'hui uniquement
     final today = _outings
@@ -183,16 +175,12 @@ class OutingsProvider extends ChangeNotifier {
             o.date.day == now.day)
         .toList();
 
-    debugPrint('📅 ${today.length} événements aujourd\'hui');
-
     if (today.isEmpty) {
       // Pas d'événements aujourd'hui : prendre les 3 prochains
-      debugPrint('⚠️ Pas d\'événements aujourd\'hui, recherche futurs...');
       final upcoming = _outings.where((o) => o.date.isAfter(now)).toList()
         ..sort((a, b) => a.date.compareTo(b.date));
 
       if (upcoming.isEmpty) {
-        debugPrint('❌ Aucun événement à venir');
         return [];
       }
 
@@ -201,21 +189,14 @@ class OutingsProvider extends ChangeNotifier {
       _dailyOutings
         ..clear()
         ..addAll(selected);
-      debugPrint('✅ ${_dailyOutings.length} prochains événements sélectionnés');
       return List.unmodifiable(_dailyOutings);
     }
 
     // Filtrer par préférences
     final matches = today.where((o) {
       final cats = o.categories.map((c) => c.toLowerCase()).toSet();
-      final hasMatch = prefs.intersection(cats).isNotEmpty;
-      if (hasMatch) {
-        debugPrint('✓ Match: ${o.title} (${cats.join(", ")})');
-      }
-      return hasMatch;
+      return prefs.intersection(cats).isNotEmpty;
     }).toList();
-
-    debugPrint('🎯 ${matches.length} événements matchent les préférences');
 
     // Pool de sélection : préférer les matches, sinon tous les événements du jour
     List<Outing> pool = matches.isNotEmpty ? matches : today;
@@ -237,7 +218,6 @@ class OutingsProvider extends ChangeNotifier {
       ..clear()
       ..addAll(selected.take(3));
 
-    debugPrint('✅ ${_dailyOutings.length} événements sélectionnés');
     return List.unmodifiable(_dailyOutings);
   }
 
