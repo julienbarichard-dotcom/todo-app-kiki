@@ -38,71 +38,71 @@ class _KanbanScreenState extends State<KanbanScreen> {
       ),
       body: Consumer<TodoProvider>(
         builder: (context, todoProvider, child) {
-          final tasks = todoProvider.getTasksForPerson(utilisateurActuel);
+          final taches = todoProvider.getTachesPourPersonne(utilisateurActuel);
 
           // Grouper les tâches par statut
-          final tasksToValidate = tasks
+          final tachesAValider = taches
               .where((t) =>
                   t.isMultiValidation &&
                   t.statut == Statut.aValider &&
                   !t.estComplete &&
                   !t.isRejected)
               .toList();
-          final overdueTasks =
-              tasks.where((t) => t.isReported && !t.estComplete).toList();
-          final tasksToStart = tasks
+          final tachesEnRetard =
+              taches.where((t) => t.isReported && !t.estComplete).toList();
+          final tachesAFaire = taches
               .where((t) =>
                   t.statut == Statut.enAttente &&
                   !t.estComplete &&
                   !t.isReported)
               .toList();
-          final tasksInProgress = tasks
+          final tachesEnCours = taches
               .where((t) =>
                   t.statut == Statut.enCours && !t.estComplete && !t.isReported)
               .toList();
-          final completedTasks = tasks
+          final tachesTerminees = taches
               .where((t) => t.statut == Statut.termine || t.estComplete)
               .toList();
 
-          final columns = [
+          final colonnes = [
             (
               titre: 'A valider',
-              tasks: tasksToValidate,
+              taches: tachesAValider,
               color: const Color(0xFF9C27B0),
             ),
             (
               titre: 'En retard',
-              tasks: overdueTasks,
+              taches: tachesEnRetard,
               color: Colors.orange,
             ),
             (
               titre: 'A faire',
-              tasks: tasksToStart,
+              taches: tachesAFaire,
               color: Colors.grey,
             ),
             (
               titre: 'En cours',
-              tasks: tasksInProgress,
+              taches: tachesEnCours,
               color: Colors.blue,
             ),
             (
               titre: 'Terminé',
-              tasks: completedTasks,
+              taches: tachesTerminees,
               color: Colors.green,
             ),
           ];
 
           return PageView.builder(
             controller: PageController(viewportFraction: 0.96),
-            itemCount: columns.length,
+            itemCount: colonnes.length,
             itemBuilder: (context, index) {
-              final col = columns[index];
+              final col = colonnes[index];
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: _buildColumn(
                   context,
                   col.titre,
-                  col.tasks,
+                  col.taches,
                   col.color,
                   todoProvider,
                 ),
@@ -117,7 +117,7 @@ class _KanbanScreenState extends State<KanbanScreen> {
   Widget _buildColumn(
     BuildContext context,
     String titre,
-    List<TodoTask> tasks,
+    List<TodoTask> taches,
     Color color,
     TodoProvider todoProvider,
   ) {
@@ -167,7 +167,7 @@ class _KanbanScreenState extends State<KanbanScreen> {
             const SizedBox(height: 12),
             // Liste des tâches
             Expanded(
-              child: tasks.isEmpty
+              child: taches.isEmpty
                   ? Center(
                       child: Text(
                         'Aucune tâche',
@@ -175,12 +175,12 @@ class _KanbanScreenState extends State<KanbanScreen> {
                       ),
                     )
                   : ListView.builder(
-                      itemCount: tasks.length,
+                      itemCount: taches.length,
                       itemBuilder: (context, index) {
-                        final task = tasks[index];
+                        final tache = taches[index];
                         return _buildKanbanCard(
                           context,
-                          task,
+                          tache,
                           todoProvider,
                         );
                       },
@@ -194,10 +194,10 @@ class _KanbanScreenState extends State<KanbanScreen> {
 
   Widget _buildKanbanCard(
     BuildContext context,
-    TodoTask task,
+    TodoTask tache,
     TodoProvider todoProvider,
   ) {
-    final isRejected = task.isRejected;
+    final isRejected = tache.isRejected;
     // Cartes : fond noir foncé par défaut, rouge si rejetée
     final backgroundColor =
         isRejected ? Colors.red.shade700 : const Color(0xFF0A0A0A);
@@ -222,7 +222,7 @@ class _KanbanScreenState extends State<KanbanScreen> {
             borderRadius: BorderRadius.circular(8),
             border: Border(
               left: BorderSide(
-                color: isRejected ? Colors.red : task.urgence.color,
+                color: isRejected ? Colors.red : tache.urgence.color,
                 width: 4,
               ),
             ),
@@ -237,7 +237,7 @@ class _KanbanScreenState extends State<KanbanScreen> {
                   children: [
                     Expanded(
                       child: Text(
-                        task.titre,
+                        tache.titre,
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -264,7 +264,7 @@ class _KanbanScreenState extends State<KanbanScreen> {
                 const SizedBox(height: 8),
                 if (tache.description.isNotEmpty)
                   Text(
-                    task.description,
+                    tache.description,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -347,7 +347,7 @@ class _KanbanScreenState extends State<KanbanScreen> {
     return '$jour/$mois/${date.year}';
   }
 
-  void _validateTask(TodoTask task, TodoProvider todoProvider) {
+  void _validateTask(TodoTask tache, TodoProvider todoProvider) {
     final userProvider = context.read<UserProvider>();
     final currentUser = userProvider.currentUser?.prenom ?? 'Unknown';
 
@@ -355,18 +355,18 @@ class _KanbanScreenState extends State<KanbanScreen> {
     updatedValidations[currentUser] = true;
 
     final allValidated = updatedValidations.entries
-        .where((e) => task.assignedTo.contains(e.key))
+        .where((e) => tache.assignedTo.contains(e.key))
         .every((e) => e.value == true);
 
     // Si rejet précédent, enlever le rejet quand quelqu'un valide
-    final tacheModifiee = task.copyWith(
+    final tacheModifiee = tache.copyWith(
       validations: updatedValidations,
       statut: allValidated ? Statut.termine : Statut.aValider,
       estComplete: allValidated,
       isRejected: false, // Enlever le rejet si quelqu'un valide
     );
 
-    todoProvider.updateTask(tacheModifiee);
+    todoProvider.modifierTache(tacheModifiee);
     setState(() {});
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -379,13 +379,13 @@ class _KanbanScreenState extends State<KanbanScreen> {
     );
   }
 
-  void _rejectTask(TodoTask task, TodoProvider todoProvider) {
-    final tacheModifiee = task.copyWith(
+  void _rejectTask(TodoTask tache, TodoProvider todoProvider) {
+    final tacheModifiee = tache.copyWith(
       isRejected: true,
       statut: Statut.enCours,
     );
 
-    todoProvider.updateTask(tacheModifiee);
+    todoProvider.modifierTache(tacheModifiee);
     setState(() {});
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -396,7 +396,7 @@ class _KanbanScreenState extends State<KanbanScreen> {
     );
   }
 
-  void _showCommentsDialog(TodoTask task, TodoProvider todoProvider) {
+  void _showCommentsDialog(TodoTask tache, TodoProvider todoProvider) {
     final commentController = TextEditingController();
     final userProvider = context.read<UserProvider>();
     final currentUser = userProvider.currentUser?.prenom ?? 'Unknown';
@@ -417,9 +417,9 @@ class _KanbanScreenState extends State<KanbanScreen> {
                   height: 150,
                   child: ListView.builder(
                     shrinkWrap: true,
-                    itemCount: task.comments.length,
+                    itemCount: tache.comments.length,
                     itemBuilder: (context, index) {
-                      final comment = task.comments[index];
+                      final comment = tache.comments[index];
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 8),
                         child: Container(
@@ -477,9 +477,9 @@ class _KanbanScreenState extends State<KanbanScreen> {
 
                         final updatedComments = [...tache.comments, newComment];
                         final tacheModifiee =
-                            task.copyWith(comments: updatedComments);
+                            tache.copyWith(comments: updatedComments);
 
-                        todoProvider.updateTask(tacheModifiee);
+                        todoProvider.modifierTache(tacheModifiee);
                         Navigator.pop(context);
                         setState(() {});
 

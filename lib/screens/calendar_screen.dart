@@ -58,7 +58,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => todoProv.loadTasks(),
+            onPressed: () => todoProv.loadTaches(),
             tooltip: 'Actualiser',
           ),
           PopupMenuButton<CalendarFormat>(

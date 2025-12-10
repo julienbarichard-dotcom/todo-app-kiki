@@ -9,7 +9,7 @@ class StatsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final todoProv = context.watch<TodoProvider>();
-    final all = todoProv.tasks; // supposed getter
+    final all = todoProv.taches; // supposed getter
 
     final total = all.length;
     final haute = all.where((t) => t.urgence == 'haute').length;

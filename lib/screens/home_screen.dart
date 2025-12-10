@@ -40,14 +40,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   static const Color mintGreen = Color(0xFF1DB679);
 
-  // Filter states
-  String _dateSortOrder = 'proche'; // 'proche', 'lointain'
-  String _periodFilter =
+  // États des filtres
+  String _triDate = 'proche'; // 'proche', 'lointain'
+  String _filtrePeriode =
       'jour'; // 'jour', 'semaine', 'mois', 'continue', 'toutes'
-  String? _statusFilter; // null, 'en_cours', 'termine'
-  String? _labelFilter; // null ou nom du label
-  bool? _subTasksFilter; // null, true (avec), false (sans)
-  String? _priorityFilter; // null, 'haute', 'moyenne', 'basse'
+  String? _filtreEtat; // null, 'en_cours', 'termine'
+  String? _filtreLabel; // null ou nom du label
+  bool? _filtreSousTaches; // null, true (avec), false (sans)
+  String? _filtrePriorite; // null, 'haute', 'moyenne', 'basse'
 
   // Événements sélectionnés pour le carrousel
   List<Outing>? _selectedOutings;
@@ -56,20 +56,20 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadTasks(); // Charge et reporte automatiquement dans loadTasks()
+    _chargerTaches(); // Charge et reporte automatiquement dans loadTaches()
     // Attendre que le widget soit monté avant d'afficher la popup
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _restoreCalendarSession();
+      _restaurerSessionCalendar();
       _loadOutingsFromShotgun(); // Charger directement depuis Shotgun
     });
   }
 
-  Future<void> _loadTasks() async {
-    await context.read<TodoProvider>().loadTasks();
+  Future<void> _chargerTaches() async {
+    await context.read<TodoProvider>().loadTaches();
   }
 
   /// Tenter de restaurer automatiquement la session Google Calendar
-  Future<void> _restoreCalendarSession() async {
+  Future<void> _restaurerSessionCalendar() async {
     // Si on veut tester rapidement l'UI sans lancer le flow OAuth Google,
     // active temporairement `disableCalendarAuthForDev = true` dans `lib/config.dart`.
     if (disableCalendarAuthForDev) {
@@ -89,13 +89,13 @@ class _HomeScreenState extends State<HomeScreen> {
         // Toujours demander la connexion Calendar car c'est essentiel
         debugPrint('🔄 Connexion Google Calendar requise...');
         if (mounted) {
-          _showCalendarConnectionPopup();
+          _afficherPopupConnexionCalendar();
         }
       }
     } catch (e) {
       debugPrint('⚠️ Erreur restauration Calendar au démarrage: $e');
       if (mounted) {
-        _showCalendarConnectionPopup();
+        _afficherPopupConnexionCalendar();
       }
     }
   }
@@ -231,7 +231,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // Si besoin plus tard, réimplémenter `_showQuickNoteDialog`.
 
   /// Afficher popup demandant la connexion Google Calendar
-  void _showCalendarConnectionPopup() {
+  void _afficherPopupConnexionCalendar() {
     if (!mounted) return;
 
     showDialog(
@@ -283,7 +283,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 // Attendre un peu puis réafficher
                 Future.delayed(const Duration(seconds: 3), () {
                   if (mounted && !GoogleCalendarService().isAuthenticated) {
-                    _showCalendarConnectionPopup();
+                    _afficherPopupConnexionCalendar();
                   }
                 });
               }
@@ -302,99 +302,99 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Applique tous les filtres sur la liste de tâches
-  List<TodoTask> _applyFilters(List<TodoTask> tasks) {
-    var filteredTasks = List<TodoTask>.from(tasks);
+  List<TodoTask> _appliquerFiltres(List<TodoTask> taches) {
+    var tachesFiltrees = List<TodoTask>.from(taches);
 
     // TOUJOURS filtrer les tâches complètes (elles vont dans Kanban)
-    filteredTasks = filteredTasks.where((t) => !t.estComplete).toList();
+    tachesFiltrees = tachesFiltrees.where((t) => !t.estComplete).toList();
 
     // Filtre par état
-    if (_statusFilter == 'en_attente') {
-      filteredTasks =
-          filteredTasks.where((t) => t.statut == Statut.enAttente).toList();
-    } else if (_statusFilter == 'en_cours') {
-      filteredTasks =
-          filteredTasks.where((t) => t.statut == Statut.enCours).toList();
+    if (_filtreEtat == 'en_attente') {
+      tachesFiltrees =
+          tachesFiltrees.where((t) => t.statut == Statut.enAttente).toList();
+    } else if (_filtreEtat == 'en_cours') {
+      tachesFiltrees =
+          tachesFiltrees.where((t) => t.statut == Statut.enCours).toList();
     }
 
     // Filtre par label
-    if (_labelFilter != null) {
-      filteredTasks =
-          filteredTasks.where((t) => t.label == _labelFilter).toList();
+    if (_filtreLabel != null) {
+      tachesFiltrees =
+          tachesFiltrees.where((t) => t.label == _filtreLabel).toList();
     }
 
     // Filtre par sous-tâches
-    if (_subTasksFilter != null) {
-      if (_subTasksFilter!) {
-        filteredTasks =
-            filteredTasks.where((t) => t.subTasks.isNotEmpty).toList();
+    if (_filtreSousTaches != null) {
+      if (_filtreSousTaches!) {
+        tachesFiltrees =
+            tachesFiltrees.where((t) => t.subTasks.isNotEmpty).toList();
       } else {
-        filteredTasks =
-            filteredTasks.where((t) => t.subTasks.isEmpty).toList();
+        tachesFiltrees =
+            tachesFiltrees.where((t) => t.subTasks.isEmpty).toList();
       }
     }
 
     // Filtre par priorité
-    if (_priorityFilter != null) {
-      final urgence = _priorityFilter == 'haute'
+    if (_filtrePriorite != null) {
+      final urgence = _filtrePriorite == 'haute'
           ? Urgence.haute
-          : _priorityFilter == 'moyenne'
+          : _filtrePriorite == 'moyenne'
               ? Urgence.moyenne
               : Urgence.basse;
-      filteredTasks =
-          filteredTasks.where((t) => t.urgence == urgence).toList();
+      tachesFiltrees =
+          tachesFiltrees.where((t) => t.urgence == urgence).toList();
     }
 
     // Filtre par période
-    if (_periodFilter != 'toutes') {
+    if (_filtrePeriode != 'toutes') {
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
 
-      if (_periodFilter == 'jour') {
+      if (_filtrePeriode == 'jour') {
         // Tâches aujourd'hui
-        filteredTasks = filteredTasks.where((t) {
+        tachesFiltrees = tachesFiltrees.where((t) {
           if (t.dateEcheance == null) return false;
           final taskDate = DateTime(
               t.dateEcheance!.year, t.dateEcheance!.month, t.dateEcheance!.day);
           return taskDate.isAtSameMomentAs(today);
         }).toList();
-      } else if (_periodFilter == 'semaine') {
+      } else if (_filtrePeriode == 'semaine') {
         // Tâches de la semaine (7 prochains jours)
         final weekEnd = today.add(const Duration(days: 7));
-        filteredTasks = filteredTasks.where((t) {
+        tachesFiltrees = tachesFiltrees.where((t) {
           if (t.dateEcheance == null) return false;
           final taskDate = DateTime(
               t.dateEcheance!.year, t.dateEcheance!.month, t.dateEcheance!.day);
           return taskDate.isAfter(today.subtract(const Duration(days: 1))) &&
               taskDate.isBefore(weekEnd);
         }).toList();
-      } else if (_periodFilter == 'mois') {
+      } else if (_filtrePeriode == 'mois') {
         // Tâches du mois (30 prochains jours)
         final monthEnd = today.add(const Duration(days: 30));
-        filteredTasks = filteredTasks.where((t) {
+        tachesFiltrees = tachesFiltrees.where((t) {
           if (t.dateEcheance == null) return false;
           final taskDate = DateTime(
               t.dateEcheance!.year, t.dateEcheance!.month, t.dateEcheance!.day);
           return taskDate.isAfter(today.subtract(const Duration(days: 1))) &&
               taskDate.isBefore(monthEnd);
         }).toList();
-      } else if (_periodFilter == 'continue') {
+      } else if (_filtrePeriode == 'continue') {
         // Tâches sans date (continues)
-        filteredTasks =
-            filteredTasks.where((t) => t.dateEcheance == null).toList();
+        tachesFiltrees =
+            tachesFiltrees.where((t) => t.dateEcheance == null).toList();
       }
     }
 
     // Tri par date
-    filteredTasks.sort((a, b) {
+    tachesFiltrees.sort((a, b) {
       final dateA = a.dateEcheance ?? DateTime(9999);
       final dateB = b.dateEcheance ?? DateTime(9999);
-      return _dateSortOrder == 'proche'
+      return _triDate == 'proche'
           ? dateA.compareTo(dateB)
           : dateB.compareTo(dateA);
     });
 
-    return filteredTasks;
+    return tachesFiltrees;
   }
 
   Widget _buildFiltresSection() {
@@ -414,7 +414,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: DropdownButton<String>(
-                value: _dateSortOrder,
+                value: _triDate,
                 isExpanded: true,
                 underline: const SizedBox(),
                 dropdownColor: const Color(0xFF1E1E1E),
@@ -426,7 +426,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       value: 'lointain', child: Text('📅 Date lointaine')),
                 ],
                 onChanged: (value) {
-                  if (value != null) setState(() => _dateSortOrder = value);
+                  if (value != null) setState(() => _triDate = value);
                 },
               ),
             ),
@@ -441,7 +441,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: DropdownButton<String>(
-                value: _periodFilter,
+                value: _filtrePeriode,
                 isExpanded: true,
                 underline: const SizedBox(),
                 dropdownColor: const Color(0xFF1E1E1E),
@@ -458,7 +458,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       value: 'continue', child: Text('♾️ Sans date')),
                 ],
                 onChanged: (value) {
-                  if (value != null) setState(() => _periodFilter = value);
+                  if (value != null) setState(() => _filtrePeriode = value);
                 },
               ),
             ),
@@ -473,7 +473,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: DropdownButton<String?>(
-                value: _statusFilter,
+                value: _filtreEtat,
                 isExpanded: true,
                 underline: const SizedBox(),
                 dropdownColor: const Color(0xFF1E1E1E),
@@ -485,7 +485,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   DropdownMenuItem(
                       value: 'en_cours', child: Text('▶️ En cours')),
                 ],
-                onChanged: (value) => setState(() => _statusFilter = value),
+                onChanged: (value) => setState(() => _filtreEtat = value),
               ),
             ),
             const SizedBox(width: 6),
@@ -499,7 +499,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: DropdownButton<String?>(
-                value: _priorityFilter,
+                value: _filtrePriorite,
                 isExpanded: true,
                 underline: const SizedBox(),
                 dropdownColor: const Color(0xFF1E1E1E),
@@ -511,7 +511,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   DropdownMenuItem(value: 'moyenne', child: Text('🟠 Moyenne')),
                   DropdownMenuItem(value: 'basse', child: Text('🟢 Basse')),
                 ],
-                onChanged: (value) => setState(() => _priorityFilter = value),
+                onChanged: (value) => setState(() => _filtrePriorite = value),
               ),
             ),
             const SizedBox(width: 6),
@@ -525,7 +525,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: DropdownButton<bool?>(
-                value: _subTasksFilter,
+                value: _filtreSousTaches,
                 isExpanded: true,
                 underline: const SizedBox(),
                 dropdownColor: const Color(0xFF1E1E1E),
@@ -538,7 +538,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   DropdownMenuItem(
                       value: false, child: Text('❌ Sans sous-tâche')),
                 ],
-                onChanged: (value) => setState(() => _subTasksFilter = value),
+                onChanged: (value) => setState(() => _filtreSousTaches = value),
               ),
             ),
             const SizedBox(width: 6),
@@ -552,7 +552,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: DropdownButton<String?>(
-                value: _labelFilter,
+                value: _filtreLabel,
                 isExpanded: true,
                 underline: const SizedBox(),
                 dropdownColor: const Color(0xFF1E1E1E),
@@ -567,14 +567,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   DropdownMenuItem(value: 'Loisir', child: Text('Loisir')),
                   DropdownMenuItem(value: 'Autre', child: Text('Autre')),
                 ],
-                onChanged: (value) => setState(() => _labelFilter = value),
+                onChanged: (value) => setState(() => _filtreLabel = value),
               ),
             ),
             // Bouton effacer
-            if (_statusFilter != null ||
-                _labelFilter != null ||
-                _subTasksFilter != null ||
-                _priorityFilter != null) ...[
+            if (_filtreEtat != null ||
+                _filtreLabel != null ||
+                _filtreSousTaches != null ||
+                _filtrePriorite != null) ...[
               const SizedBox(width: 6),
               IconButton(
                 icon: const Icon(Icons.clear, size: 18),
@@ -583,10 +583,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                 onPressed: () {
                   setState(() {
-                    _statusFilter = null;
-                    _labelFilter = null;
-                    _subTasksFilter = null;
-                    _priorityFilter = null;
+                    _filtreEtat = null;
+                    _filtreLabel = null;
+                    _filtreSousTaches = null;
+                    _filtrePriorite = null;
                   });
                 },
               ),
@@ -854,14 +854,14 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Consumer<TodoProvider>(
         builder: (context, todoProvider, child) {
-          var tasks = todoProvider.getTasksForPerson(utilisateurActuel);
-          var filteredTasks = _applyFilters(tasks);
+          var taches = todoProvider.getTachesPourPersonne(utilisateurActuel);
+          var tachesFiltrees = _appliquerFiltres(taches);
 
           return Column(
             children: [
               _buildFiltresSection(),
               Expanded(
-                child: filteredTasks.isEmpty
+                child: tachesFiltrees.isEmpty
                     ? Center(
                         child: Text(
                           'Aucune tâche',
@@ -870,31 +870,31 @@ class _HomeScreenState extends State<HomeScreen> {
                       )
                     : ListView.builder(
                         padding: const EdgeInsets.all(8),
-                        itemCount: filteredTasks.length,
+                        itemCount: tachesFiltrees.length,
                         itemBuilder: (context, index) {
-                          final task = filteredTasks[index];
+                          final tache = tachesFiltrees[index];
                           return TodoTaskCard(
-                            tache: task,
+                            tache: tache,
                             onTap: () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) =>
-                                      TaskDetailScreen(tache: task),
+                                      TaskDetailScreen(tache: tache),
                                 ),
                               ).then((_) => setState(() {}));
                             },
                             onToggleComplete: () {
-                              todoProvider.toggleTaskComplete(task.id);
+                              todoProvider.toggleTacheComplete(tache.id);
                             },
                             onDelete: () {
-                              _confirmDelete(context, task.id, todoProvider);
+                              _confirmDelete(context, tache.id, todoProvider);
                             },
                             onEdit: () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => EditTaskScreen(tache: task),
+                                  builder: (_) => EditTaskScreen(tache: tache),
                                 ),
                               ).then((modified) {
                                 if (modified == true) {
@@ -903,9 +903,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               });
                             },
                             onChangeStatut: (nouveauStatut) async {
-                              final updatedTask =
-                                  task.copyWith(statut: nouveauStatut);
-                              await todoProvider.updateTask(updatedTask);
+                              final tacheModifiee =
+                                  tache.copyWith(statut: nouveauStatut);
+                              await todoProvider.modifierTache(tacheModifiee);
                             },
                           );
                         },
@@ -944,10 +944,10 @@ class _HomeScreenState extends State<HomeScreen> {
               child: const Text('Annuler')),
           TextButton(
             onPressed: () {
-              todoProvider.deleteTask(id);
+              todoProvider.supprimerTache(id);
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Task deleted')),
+                const SnackBar(content: Text('Tâche supprimée')),
               );
             },
             child: const Text('Supprimer', style: TextStyle(color: Colors.red)),
