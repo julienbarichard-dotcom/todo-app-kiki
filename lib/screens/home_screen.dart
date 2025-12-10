@@ -27,6 +27,7 @@ import 'compact_view_screen.dart';
 import 'timeline_view_screen.dart';
 import 'stats_screen.dart';
 import 'preferences_screen.dart';
+import 'task_detail_screen.dart';
 
 /// Écran principal - Affiche les tâches
 class HomeScreen extends StatefulWidget {
@@ -62,6 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _forcerVueListe();
     _chargerTachesEtNotifications(); // Charge et reporte automatiquement dans loadTaches()
     // Attendre que le widget soit monté avant d'afficher la popup
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -76,14 +78,23 @@ class _HomeScreenState extends State<HomeScreen> {
     await _showNotificationPopupIfNeeded();
   }
 
+  Future<void> _forcerVueListe() async {
+    // Force la vue liste pour tous les utilisateurs à chaque ouverture Home
+    try {
+      await context.read<UserProvider>().resetViewPreference();
+    } catch (_) {
+      // silent
+    }
+  }
+
   Future<void> _showNotificationPopupIfNeeded() async {
     if (_hasShownNotificationPopup) return;
 
-    final tachesNotif = context
-        .read<TodoProvider>()
-        .taches
-        .where((t) => t.notificationEnabled && !t.estComplete)
-        .toList();
+    final user = utilisateurActuel;
+    final tachesNotif = context.read<TodoProvider>().taches.where((t) {
+      final assigned = t.assignedTo.contains(user);
+      return assigned && t.notificationEnabled && !t.estComplete;
+    }).toList();
 
     if (tachesNotif.isEmpty) return;
     _hasShownNotificationPopup = true;
@@ -125,13 +136,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         trailing: TextButton(
                           onPressed: () {
                             Navigator.of(context).pop();
-                            _showTaskQuickView(t);
+                            _ouvrirDetailTache(t);
                           },
                           child: const Text('Voir'),
                         ),
                         onTap: () {
                           Navigator.of(context).pop();
-                          _showTaskQuickView(t);
+                          _ouvrirDetailTache(t);
                         },
                       );
                     },
@@ -151,73 +162,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showTaskQuickView(TodoTask tache) {
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (context) {
-        final dateText = tache.dateEcheance != null
-            ? DateFormat('EEEE dd MMM HH:mm', 'fr_FR')
-                .format(tache.dateEcheance!)
-            : 'Sans échéance';
-        final assigne = tache.assignedTo.isEmpty
-            ? 'Non assignée'
-            : tache.assignedTo.join(', ');
-
-        return Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.circle, color: tache.urgence.color, size: 14),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      tache.titre,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(dateText, style: Theme.of(context).textTheme.bodySmall),
-              const SizedBox(height: 8),
-              if (tache.description.isNotEmpty)
-                Text(
-                  tache.description,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              const SizedBox(height: 8),
-              Text('Assignée à : $assigne'),
-              const SizedBox(height: 12),
-              if (tache.notificationEnabled)
-                Row(
-                  children: [
-                    const Icon(Icons.notifications_active, size: 18),
-                    const SizedBox(width: 6),
-                    Text(
-                      tache.notificationMinutesBefore != null
-                          ? 'Notification ${tache.notificationMinutesBefore} min avant'
-                          : 'Notification activée',
-                    ),
-                  ],
-                ),
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Fermer'),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+  void _ouvrirDetailTache(TodoTask tache) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TaskDetailScreen(tache: tache),
+      ),
     );
   }
 
