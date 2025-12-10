@@ -198,8 +198,11 @@ class _KanbanScreenState extends State<KanbanScreen> {
     TodoProvider todoProvider,
   ) {
     final isRejected = tache.isRejected;
-    final backgroundColor = isRejected ? Colors.red[700] : Colors.grey[900];
+    // Cartes : fond noir foncé par défaut, rouge si rejetée
+    final backgroundColor =
+        isRejected ? Colors.red.shade700 : const Color(0xFF0A0A0A);
     const textColor = Colors.white;
+    const secondaryColor = Colors.white70;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -248,15 +251,13 @@ class _KanbanScreenState extends State<KanbanScreen> {
                       Padding(
                         padding: const EdgeInsets.only(left: 8),
                         child: Text('👥',
-                            style: TextStyle(
-                                fontSize: 16,
-                                color:
-                                    isRejected ? Colors.white : Colors.blue)),
+                            style: TextStyle(fontSize: 16, color: textColor)),
                       ),
                     if (isRejected)
-                      const Padding(
-                        padding: EdgeInsets.only(left: 8),
-                        child: Text('❌', style: TextStyle(fontSize: 14)),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: Text('❌',
+                            style: TextStyle(fontSize: 14, color: textColor)),
                       ),
                   ],
                 ),
@@ -268,7 +269,7 @@ class _KanbanScreenState extends State<KanbanScreen> {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 12,
-                      color: isRejected ? Colors.white70 : Colors.grey[300],
+                      color: secondaryColor,
                     ),
                   ),
                 if (tache.dateEcheance != null) ...[
@@ -276,15 +277,13 @@ class _KanbanScreenState extends State<KanbanScreen> {
                   Row(
                     children: [
                       Icon(Icons.calendar_today,
-                          size: 12,
-                          color:
-                              isRejected ? Colors.white70 : Colors.grey[600]),
+                          size: 12, color: secondaryColor),
                       const SizedBox(width: 4),
                       Text(
                         _formatDate(tache.dateEcheance!),
                         style: TextStyle(
                           fontSize: 11,
-                          color: isRejected ? Colors.white70 : Colors.grey[600],
+                          color: secondaryColor,
                         ),
                       ),
                     ],
