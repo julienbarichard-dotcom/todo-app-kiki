@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
-/// Reusable time picker dialog with sliders for hours and minutes
-/// Extracted to avoid duplication between add_task_screen and edit_task_screen
+/// Boîte de dialogue réutilisable pour sélectionner l'heure avec des curseurs pour les heures et minutes
+/// Extrait pour éviter la duplication entre add_task_screen et edit_task_screen
 class TimePickerDialog {
-  /// Shows a time picker dialog with hour and minute sliders
+  /// Affiche une boîte de dialogue de sélection d'heure avec des curseurs pour les heures et minutes
   ///
-  /// [context] The build context for showing the dialog
-  /// [initialTime] The initial time to display, defaults to current time if null
+  /// [context] Le contexte de construction pour afficher la boîte de dialogue
+  /// [initialTime] L'heure initiale à afficher, par défaut l'heure actuelle si null
   ///
-  /// Returns the selected [TimeOfDay] or null if cancelled
+  /// Renvoie le [TimeOfDay] sélectionné ou null si annulé
   static Future<TimeOfDay?> show({
     required BuildContext context,
     TimeOfDay? initialTime,
@@ -24,7 +24,7 @@ class TimePickerDialog {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Display selected time
+              // Affichage de l'heure sélectionnée
               Text(
                 '${selectedHour.toString().padLeft(2, '0')}:${selectedMinute.toString().padLeft(2, '0')}',
                 style: const TextStyle(
@@ -34,7 +34,7 @@ class TimePickerDialog {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),
-              // Sliders for hours and minutes
+              // Curseurs pour les heures et minutes
               Row(
                 children: [
                   Expanded(

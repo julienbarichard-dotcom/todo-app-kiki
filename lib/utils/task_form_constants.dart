@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-/// Task form constants
-/// Extracted to avoid duplication across form screens
+/// Constantes pour les formulaires de tâches
+/// Extrait pour éviter la duplication entre les écrans de formulaire
 class TaskFormConstants {
-  /// Available task labels/categories
+  /// Étiquettes/catégories de tâches disponibles
   static const List<String> labels = [
     'Perso',
     'B2B',
@@ -13,13 +13,13 @@ class TaskFormConstants {
     'Autre',
   ];
 
-  /// Notification minutes before options
+  /// Options de minutes avant pour les notifications
   static const List<int> notificationMinutes = [5, 15, 30, 60, 120, 1440];
 
-  /// Minutes in a full day (24 hours)
+  /// Minutes dans une journée complète (24 heures)
   static const int minutesPerDay = 1440;
 
-  /// Get display text for notification minutes
+  /// Obtenir le texte d'affichage pour les minutes de notification
   static String getNotificationMinutesLabel(int minutes) {
     if (minutes == minutesPerDay) {
       return '1 jour';
@@ -30,6 +30,6 @@ class TaskFormConstants {
     }
   }
 
-  /// Primary accent color used throughout forms
+  /// Couleur d'accentuation principale utilisée dans tous les formulaires
   static const mintGreen = Color(0xFF1DB679);
 }
