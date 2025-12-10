@@ -5,7 +5,12 @@ import '../providers/user_provider.dart';
 
 /// Widget sélecteur de vue avec affichage des options disponibles
 class ViewSelector extends StatelessWidget {
-  const ViewSelector({super.key});
+  const ViewSelector({
+    super.key,
+    required this.onOpenCalendar,
+  });
+
+  final VoidCallback onOpenCalendar;
 
   @override
   Widget build(BuildContext context) {
@@ -19,26 +24,45 @@ class ViewSelector extends StatelessWidget {
             border: Border.all(color: Colors.grey.shade400),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: PopupMenuButton<ViewPreference>(
+          child: PopupMenuButton<Object>(
             initialValue: currentView,
-            onSelected: (view) {
-              userProvider.setViewPreference(view);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Vue : ${view.label}'),
-                  duration: const Duration(milliseconds: 800),
-                ),
-              );
+            onSelected: (value) {
+              if (value is ViewPreference) {
+                userProvider.setViewPreference(value);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Vue : ${value.label}'),
+                    duration: const Duration(milliseconds: 800),
+                  ),
+                );
+              } else if (value == '_calendar') {
+                onOpenCalendar();
+              }
             },
             itemBuilder: (context) => [
               for (final view in ViewPreference.values)
-                PopupMenuItem<ViewPreference>(
+                PopupMenuItem<Object>(
                   value: view,
                   child: _buildViewOption(view, view == currentView),
                 ),
+              const PopupMenuDivider(),
+              const PopupMenuItem<Object>(
+                value: '_calendar',
+                child: Row(
+                  children: [
+                    Icon(Icons.calendar_month, size: 18),
+                    SizedBox(width: 12),
+                    Text(
+                      'Calendrier',
+                      style:
+                          TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
             ],
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -46,7 +70,7 @@ class ViewSelector extends StatelessWidget {
                     '${currentView.emoji} Vue',
                     style: const TextStyle(
                       fontSize: 13,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(width: 4),

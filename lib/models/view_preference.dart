@@ -55,11 +55,11 @@ extension ViewPreferenceExtension on ViewPreference {
 
   /// Parser depuis String
   static ViewPreference fromStorageString(String? value) {
-    if (value == null) return ViewPreference.kanban; // Défaut
+    if (value == null) return ViewPreference.list; // Défaut list
     try {
       return ViewPreference.values.firstWhere((v) => v.name == value);
     } catch (e) {
-      return ViewPreference.kanban; // Défaut en cas d'erreur
+      return ViewPreference.list; // Défaut en cas d'erreur
     }
   }
 }

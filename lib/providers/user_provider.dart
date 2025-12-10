@@ -17,7 +17,7 @@ class UserProvider extends ChangeNotifier {
   User? _adminUser;
 
   /// Préférence de vue utilisateur
-  ViewPreference _viewPreference = ViewPreference.kanban;
+  ViewPreference _viewPreference = ViewPreference.list; // défaut: liste
 
   List<User> get users => _users;
   User? get currentUser => _currentUser;
@@ -266,7 +266,7 @@ class UserProvider extends ChangeNotifier {
       debugPrint('📺 Vue chargée: ${_viewPreference.label}');
     } catch (e) {
       debugPrint('⚠️ Erreur chargement préférence de vue: $e');
-      _viewPreference = ViewPreference.kanban; // Défaut
+      _viewPreference = ViewPreference.list; // Défaut
     }
   }
 
@@ -285,6 +285,6 @@ class UserProvider extends ChangeNotifier {
 
   /// Réinitialiser la vue à la valeur par défaut
   Future<void> resetViewPreference() async {
-    await setViewPreference(ViewPreference.kanban);
+    await setViewPreference(ViewPreference.list);
   }
 }

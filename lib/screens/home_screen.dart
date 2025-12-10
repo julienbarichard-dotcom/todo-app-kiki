@@ -685,13 +685,9 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         elevation: 4,
         actions: [
-          // Sélecteur de vue
-          const ViewSelector(),
-          // Icône Agenda
-          IconButton(
-            icon: const Icon(Icons.calendar_month),
-            tooltip: 'Agenda',
-            onPressed: () {
+          // Sélecteur de vue (inclut accès Calendrier)
+          ViewSelector(
+            onOpenCalendar: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const CalendarScreen()),
