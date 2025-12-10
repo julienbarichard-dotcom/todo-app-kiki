@@ -3,6 +3,7 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'notification_service_interface.dart';
 import '../models/todo_task.dart';
+import '../utils/timezone_utils.dart';
 
 /// Service pour gérer les notifications locales
 /// Implémentation pour MOBILE (Android/iOS)
@@ -68,12 +69,13 @@ class NotificationService implements NotificationServiceInterface {
       return;
     }
 
-    final scheduleTime = task.dateEcheance!.subtract(
-      Duration(minutes: task.notificationMinutesBefore ?? 30),
+    final scheduleTime = TimezoneUtils.calculateScheduleTime(
+      task.dateEcheance!,
+      task.notificationMinutesBefore ?? 30,
     );
 
     // Ne pas planifier de notification si l'heure est déjà passée
-    if (scheduleTime.isBefore(DateTime.now())) {
+    if (TimezoneUtils.isScheduleTimeInPast(scheduleTime)) {
       return;
     }
 
@@ -86,16 +88,8 @@ class NotificationService implements NotificationServiceInterface {
     );
     const notificationDetails = NotificationDetails(android: androidDetails);
 
-    // Construire la TZDateTime en Europe/Paris pour forcer l'heure de Paris
-    final paris = tz.getLocation('Europe/Paris');
-    final tzSchedule = tz.TZDateTime(
-        paris,
-        scheduleTime.year,
-        scheduleTime.month,
-        scheduleTime.day,
-        scheduleTime.hour,
-        scheduleTime.minute,
-        scheduleTime.second);
+    // Construire la TZDateTime en Europe/Paris
+    final tzSchedule = TimezoneUtils.toParisTime(scheduleTime);
 
     await _notificationsPlugin.zonedSchedule(
       task.id.hashCode,

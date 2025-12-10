@@ -4,6 +4,8 @@ import 'package:uuid/uuid.dart';
 import '../models/todo_task.dart';
 import '../providers/todo_provider.dart';
 import '../providers/user_provider.dart';
+import '../widgets/task_form/time_picker_dialog.dart';
+import '../widgets/task_form/multi_validation_section.dart';
 
 /// Écran pour créer ou modifier une tâche
 class AddTaskScreen extends StatefulWidget {
@@ -397,77 +399,14 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     );
     if (date == null || !mounted) return;
 
-    // Dialog pour saisir l'heure au lieu du time picker avec aiguilles
-    int selectedHour = (_dateSelectionnee?.hour) ?? DateTime.now().hour;
-    int selectedMinute = (_dateSelectionnee?.minute) ?? 0;
+    // Use the extracted time picker dialog
+    final initialTime = _dateSelectionnee != null
+        ? TimeOfDay(hour: _dateSelectionnee!.hour, minute: _dateSelectionnee!.minute)
+        : TimeOfDay(hour: DateTime.now().hour, minute: 0);
 
-    final time = await showDialog<TimeOfDay>(
+    final time = await TimePickerDialog.show(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Sélectionner l\'heure'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Affichage de l'heure sélectionnée
-              Text(
-                '${selectedHour.toString().padLeft(2, '0')}:${selectedMinute.toString().padLeft(2, '0')}',
-                style:
-                    const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 20),
-              // Sliders pour heure et minutes
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      children: [
-                        const Text('Heure'),
-                        Slider(
-                          value: selectedHour.toDouble(),
-                          min: 0,
-                          max: 23,
-                          divisions: 23,
-                          onChanged: (value) =>
-                              setState(() => selectedHour = value.toInt()),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        const Text('Minutes'),
-                        Slider(
-                          value: selectedMinute.toDouble(),
-                          min: 0,
-                          max: 59,
-                          divisions: 59,
-                          onChanged: (value) =>
-                              setState(() => selectedMinute = value.toInt()),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Annuler'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context,
-                  TimeOfDay(hour: selectedHour, minute: selectedMinute)),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      ),
+      initialTime: initialTime,
     );
 
     if (time == null) return;
@@ -608,59 +547,11 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   }
 
   Widget _buildMultiValidationSection(Color mintGreen) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Text('Multi-validation collaborative',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                const Spacer(),
-                Checkbox(
-                  value: _isMultiValidation,
-                  activeColor: mintGreen,
-                  onChanged: (value) =>
-                      setState(() => _isMultiValidation = value ?? false),
-                ),
-              ],
-            ),
-            if (_isMultiValidation) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue[200]!),
-                ),
-                child: const Text(
-                  'ℹ️ Chaque participant assigné devra valider cette tâche avant sa clôture.',
-                  style: TextStyle(fontSize: 12),
-                ),
-              ),
-              if (_assignedToPrenoms.length < 2)
-                Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.orange[50],
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.orange[200]!),
-                    ),
-                    child: const Text(
-                      '⚠️ Minimum 2 personnes requises pour la multi-validation',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                  ),
-                ),
-            ],
-          ],
-        ),
-      ),
+    return MultiValidationSection(
+      isMultiValidation: _isMultiValidation,
+      onChanged: (value) => setState(() => _isMultiValidation = value),
+      assignedPersonCount: _assignedToPrenoms.length,
+      accentColor: mintGreen,
     );
   }
 
