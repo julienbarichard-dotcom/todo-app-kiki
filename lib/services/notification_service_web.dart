@@ -76,6 +76,31 @@ class NotificationService implements NotificationServiceInterface {
     });
   }
 
+  /// Planifier une notification ponctuelle (one-off) sur le web via Timer.
+  @override
+  Future<void> scheduleOneOffNotification({
+    required int id,
+    required String title,
+    String? body,
+    required DateTime when,
+    String? payload,
+  }) async {
+    // Annuler toute notification existante pour cet id
+    await cancelNotification(id);
+
+    tz.initializeTimeZones();
+    final paris = tz.getLocation('Europe/Paris');
+    final tzWhen = tz.TZDateTime(paris, when.year, when.month, when.day,
+        when.hour, when.minute, when.second);
+    final delay = tzWhen.toUtc().difference(DateTime.now().toUtc());
+    if (delay.isNegative) return;
+
+    _scheduledTimers[id] = Timer(delay, () {
+      html.Notification(title, body: body ?? '');
+      _scheduledTimers.remove(id);
+    });
+  }
+
   @override
   Future<void> cancelNotification(int notificationId) async {
     // Annuler le minuteur s'il existe.

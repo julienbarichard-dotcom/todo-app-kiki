@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../utils/color_extensions.dart';
 import '../models/todo_task.dart';
 import '../providers/todo_provider.dart';
+// Notifications disabled in UI: notification service wrapper is no-op
 
 class TaskDetailScreen extends StatefulWidget {
   final TodoTask tache;
@@ -276,22 +277,36 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                               color: Colors.grey.withOpacitySafe(0.3),
                             ),
                           ),
-                          child: Row(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(
-                                Icons.event,
-                                color: mintGreen,
-                                size: 28,
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.event,
+                                    color: mintGreen,
+                                    size: 28,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    _formatDate(widget.tache.dateEcheance!),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 12),
-                              Text(
-                                _formatDate(widget.tache.dateEcheance!),
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                              const SizedBox(height: 16),
+                              // Rappels désactivés dans l'UI
+                              _buildSection(
+                                context,
+                                icon: Icons.notifications,
+                                title: 'Rappels',
+                                child: const Text(
+                                    'Les rappels ont été désactivés.'),
                               ),
                             ],
                           ),

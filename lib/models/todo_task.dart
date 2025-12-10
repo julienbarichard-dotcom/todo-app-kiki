@@ -154,6 +154,8 @@ class TodoTask {
   final bool notificationEnabled; // Keep camelCase for Dart property
   final int?
       notificationMinutesBefore; // Minutes avant la date d'échéance - Keep camelCase for Dart property
+  // Rappels (nullable) stockés sous forme JSON (ex: [{"when":"2025-12-10T09:00:00Z","method":"email"}])
+  final List<Map<String, dynamic>>? reminders;
 
   // Paramètres de multi-validation collaborative
   final bool isMultiValidation; // Active le mode multi-validation
@@ -180,6 +182,7 @@ class TodoTask {
     this.isMultiValidation = false,
     this.validations = const {},
     this.comments = const [],
+    this.reminders,
     this.isRejected = false,
     this.lastUpdatedValidation,
   });
@@ -205,6 +208,7 @@ class TodoTask {
       'notification_enabled': notificationEnabled, // Use snake_case for map key
       'notification_minutes_before':
           notificationMinutesBefore, // Use snake_case for map key
+      'reminders': reminders,
       'is_multi_validation': isMultiValidation,
       'validations': validations,
       'comments': comments.map((c) => c.toMap()).toList(),
@@ -256,6 +260,11 @@ class TodoTask {
           map['notification_enabled'] ?? false, // Read from snake_case map key
       notificationMinutesBefore:
           map['notification_minutes_before'], // Read from snake_case map key
+      reminders: map['reminders'] != null
+          ? (map['reminders'] as List)
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList()
+          : null,
       isMultiValidation: map['is_multi_validation'] ?? false,
       validations: Map<String, bool>.from(map['validations'] ?? {}),
       comments: map['comments'] != null
@@ -291,6 +300,7 @@ class TodoTask {
     List<TaskComment>? comments,
     bool? isRejected,
     DateTime? lastUpdatedValidation,
+    List<Map<String, dynamic>>? reminders,
   }) {
     return TodoTask(
       id: id ?? this.id,
@@ -311,6 +321,7 @@ class TodoTask {
       isMultiValidation: isMultiValidation ?? this.isMultiValidation,
       validations: validations ?? this.validations,
       comments: comments ?? this.comments,
+      reminders: reminders ?? this.reminders,
       isRejected: isRejected ?? this.isRejected,
       lastUpdatedValidation:
           lastUpdatedValidation ?? this.lastUpdatedValidation,

@@ -10,6 +10,7 @@ import 'screens/splash_screen_clean.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/supabase_service.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,6 +25,9 @@ void main() async {
 
   // Initialiser Supabase
   await supabaseService.initialize();
+
+  // Initialiser le service de notifications locales
+  await notificationService.initialize();
 
   runApp(const MyApp());
 }

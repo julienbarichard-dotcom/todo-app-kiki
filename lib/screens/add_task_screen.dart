@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../models/todo_task.dart';
 import '../providers/todo_provider.dart';
 import '../providers/user_provider.dart';
+// ReminderPicker removed: notifications are controlled via Switch + minutes dropdown
 
 /// Écran pour créer ou modifier une tâche
 class AddTaskScreen extends StatefulWidget {
@@ -33,8 +34,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   Statut _statutSelectionne = Statut.enAttente;
 
   // Paramètres de notifications
-  bool _notificationEnabled = false;
-  int? _notificationMinutesBefore = 30;
+  // Paramètres de notifications supprimés de l'UI (rappels désactivés)
+
+  // Rappels personnalisés (liste JSON)
+  // Reminders list removed to avoid duplication with notificationEnabled
 
   // Multi-validation collaborative
   bool _isMultiValidation = false;
@@ -52,8 +55,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       _urgenceSelectionnee = task.urgence;
       _dateSelectionnee = task.dateEcheance;
       _assignedToPrenoms.addAll(task.assignedTo);
-      _notificationEnabled = task.notificationEnabled;
-      _notificationMinutesBefore = task.notificationMinutesBefore;
+      // notification fields intentionally not loaded into the edit form
       _subTasks.addAll(task.subTasks);
       _labelSelectionne = task.label;
       _statutSelectionne = task.statut;
@@ -137,8 +139,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
             _buildDatePickerSection(context),
             const SizedBox(height: 16),
 
-            // Paramètres de notifications
+            // Paramètres de notifications (activation + délai)
             _buildNotificationSection(mintGreen),
+            const SizedBox(height: 16),
             const SizedBox(height: 16),
 
             // Sous-tâches
@@ -485,40 +488,11 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Text('Activer notification',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                const Spacer(),
-                Switch(
-                  value: _notificationEnabled,
-                  onChanged: (value) =>
-                      setState(() => _notificationEnabled = value),
-                  activeThumbColor: mintGreen,
-                ),
-              ],
-            ),
-            if (_notificationEnabled) ...[
-              const SizedBox(height: 12),
-              const Text('Rappel (minutes avant) :'),
-              const SizedBox(height: 8),
-              DropdownButton<int>(
-                value: _notificationMinutesBefore ?? 30,
-                onChanged: (value) =>
-                    setState(() => _notificationMinutesBefore = value),
-                items: [5, 15, 30, 60, 120, 1440]
-                    .map((minutes) => DropdownMenuItem(
-                          value: minutes,
-                          child: Text(minutes == 1440
-                              ? '1 jour'
-                              : minutes >= 60
-                                  ? '${minutes ~/ 60}h'
-                                  : '$minutes min'),
-                        ))
-                    .toList(),
-              ),
-            ],
+          children: const [
+            Text('Rappels', style: TextStyle(fontWeight: FontWeight.bold)),
+            SizedBox(height: 8),
+            Text('Les rappels ont été désactivés dans cette application.',
+                style: TextStyle(color: Colors.grey)),
           ],
         ),
       ),
@@ -690,12 +664,14 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         subTasks: _subTasks,
         label: _labelSelectionne,
         statut: _statutSelectionne,
-        notificationEnabled: _notificationEnabled,
-        notificationMinutesBefore: _notificationMinutesBefore,
+        // reminders intentionally kept null: notifications are driven by
+        // `notificationEnabled` and `notificationMinutesBefore`.
+        reminders: null,
       );
       await todoProvider.modifierTache(updatedTask);
     } else {
       // Créer une nouvelle tâche
+
       final newTask = TodoTask(
         id: const Uuid().v4(),
         titre: _titreController.text,
@@ -707,8 +683,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         subTasks: _subTasks,
         label: _labelSelectionne,
         statut: _statutSelectionne,
-        notificationEnabled: _notificationEnabled,
-        notificationMinutesBefore: _notificationMinutesBefore,
+        reminders: null,
         isMultiValidation: _isMultiValidation,
         validations: _isMultiValidation
             ? {for (var p in _assignedToPrenoms) p: false}

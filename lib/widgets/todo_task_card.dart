@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../utils/color_extensions.dart';
 import '../models/todo_task.dart';
+import '../providers/todo_provider.dart';
 
 /// Widget Card pour afficher une tâche
 class TodoTaskCard extends StatelessWidget {
@@ -271,6 +273,7 @@ class TodoTaskCard extends StatelessWidget {
                         ),
                       ],
                     ),
+                    // Rappels désactivés : contrôle retiré de la carte UI
                   ],
                 ),
                 // Description

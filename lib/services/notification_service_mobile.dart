@@ -107,6 +107,39 @@ class NotificationService implements NotificationServiceInterface {
     );
   }
 
+  /// Planifier une notification ponctuelle (one-off) à une date donnée
+  @override
+  Future<void> scheduleOneOffNotification({
+    required int id,
+    required String title,
+    String? body,
+    required DateTime when,
+    String? payload,
+  }) async {
+    const androidDetails = AndroidNotificationDetails(
+      'todo_channel_id',
+      'Todo Notifications',
+      channelDescription: 'Notifications pour les tâches à faire',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+    const notificationDetails = NotificationDetails(android: androidDetails);
+
+    final paris = tz.getLocation('Europe/Paris');
+    final tzSchedule = tz.TZDateTime(paris, when.year, when.month, when.day,
+        when.hour, when.minute, when.second);
+
+    await _notificationsPlugin.zonedSchedule(
+      id,
+      title,
+      body,
+      tzSchedule,
+      notificationDetails,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      payload: payload,
+    );
+  }
+
   /// Annuler une notification
   @override
   Future<void> cancelNotification(int notificationId) async {

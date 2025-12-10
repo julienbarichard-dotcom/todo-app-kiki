@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import '../models/todo_task.dart';
 import '../services/supabase_service.dart';
+import '../services/notification_service.dart';
 import '../services/google_calendar_service.dart';
 
 /// Provider pour gérer les tâches avec Supabase
@@ -28,6 +29,14 @@ class TodoProvider extends ChangeNotifier {
       debugPrint('🔄 LOAD TACHES: Report automatique terminé');
 
       _triageParUrgenceDate();
+      // Reprogrammer les rappels locaux pour chaque tâche chargée
+      try {
+        for (var t in _taches) {
+          await notificationService.rescheduleForTask(t);
+        }
+      } catch (e) {
+        debugPrint('Erreur reprogrammation rappels: $e');
+      }
       notifyListeners();
 
       // Synchroniser avec Calendar si connecté
@@ -216,6 +225,12 @@ class TodoProvider extends ChangeNotifier {
       if (tache.dateEcheance != null) {
         await googleCalendarService.createEventFromTask(tache);
       }
+      // Planifier les rappels locaux
+      try {
+        await notificationService.rescheduleForTask(tache);
+      } catch (e) {
+        debugPrint('Erreur scheduling reminders on add: $e');
+      }
     } catch (e) {
       debugPrint('Erreur ajout tâche: $e');
     }
@@ -224,12 +239,25 @@ class TodoProvider extends ChangeNotifier {
   /// Supprimer une tâche
   Future<void> supprimerTache(String id) async {
     try {
+      // Récupérer la tâche localement (pour annuler ses rappels)
+      final index = _taches.indexWhere((t) => t.id == id);
+      final TodoTask? task = index != -1 ? _taches[index] : null;
+
       await supabaseService.tasksTable.delete().eq('id', id);
-      _taches.removeWhere((t) => t.id == id);
+
+      if (index != -1) {
+        _taches.removeAt(index);
+      }
       notifyListeners();
 
       // Supprimer de Google Calendar
       await googleCalendarService.deleteEventFromTask(id);
+      // Annuler les rappels locaux (si on avait la tâche)
+      try {
+        await notificationService.cancelAllForTask(id, task?.reminders);
+      } catch (e) {
+        debugPrint('Erreur cancel reminders on delete: $e');
+      }
     } catch (e) {
       debugPrint('Erreur suppression tâche: $e');
     }
@@ -264,6 +292,12 @@ class TodoProvider extends ChangeNotifier {
         // Sinon mise à jour normale
         else {
           await googleCalendarService.updateEventFromTask(tache);
+        }
+        // Reprogrammer les rappels locaux pour la tâche modifiée
+        try {
+          await notificationService.rescheduleForTask(tache);
+        } catch (e) {
+          debugPrint('Erreur scheduling reminders on update: $e');
         }
       }
       _triageParUrgenceDate();

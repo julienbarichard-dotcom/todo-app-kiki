@@ -1,0 +1,24 @@
+name: Daily email trigger
+
+on:
+  schedule:
+    # Runs every day at 08:00 Europe/Paris (UTC+1) -> cron uses UTC, so 07:00 UTC
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  invoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call daily-email function
+        env:
+          FUNCTION_URL: ${{ secrets.DAILY_EMAIL_URL }}
+          SCHEDULE_TOKEN: ${{ secrets.DAILY_EMAIL_TOKEN }}
+        run: |
+          if [ -z "$FUNCTION_URL" ]; then
+            echo "Error: DAILY_EMAIL_URL secret not set"; exit 1
+          fi
+          echo "Invoking daily-email function..."
+          curl -sS -X POST "$FUNCTION_URL" -H "Content-Type: application/json" -H "x-schedule-token: $SCHEDULE_TOKEN" -d '{}' | jq
