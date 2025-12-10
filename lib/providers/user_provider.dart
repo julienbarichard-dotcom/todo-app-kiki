@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
+import '../models/view_preference.dart';
 import '../services/supabase_service.dart';
 
 /// Provider pour gérer les utilisateurs avec Supabase
@@ -15,9 +16,13 @@ class UserProvider extends ChangeNotifier {
   /// Utilisateur admin
   User? _adminUser;
 
+  /// Préférence de vue utilisateur
+  ViewPreference _viewPreference = ViewPreference.kanban;
+
   List<User> get users => _users;
   User? get currentUser => _currentUser;
   User? get adminUser => _adminUser;
+  ViewPreference get viewPreference => _viewPreference;
   bool get isLoggedIn => _currentUser != null;
   bool get isCurrentUserAdmin =>
       _currentUser?.isAdmin ?? false; // Use camelCase property
@@ -241,6 +246,7 @@ class UserProvider extends ChangeNotifier {
 
       // Restaurer la session sans demander le mot de passe
       _currentUser = user;
+      await _loadViewPreference(); // Charger la préférence de vue persistée
       notifyListeners();
 
       debugPrint('✅ Session utilisateur restaurée: ${user.prenom}');
@@ -249,5 +255,36 @@ class UserProvider extends ChangeNotifier {
       debugPrint('❌ Erreur restauration session utilisateur: $e');
       return false;
     }
+  }
+
+  /// Charger la préférence de vue sauvegardée
+  Future<void> _loadViewPreference() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final viewString = prefs.getString('user_view_preference');
+      _viewPreference = ViewPreferenceExtension.fromStorageString(viewString);
+      debugPrint('📺 Vue chargée: ${_viewPreference.label}');
+    } catch (e) {
+      debugPrint('⚠️ Erreur chargement préférence de vue: $e');
+      _viewPreference = ViewPreference.kanban; // Défaut
+    }
+  }
+
+  /// Sauvegarder la préférence de vue
+  Future<void> setViewPreference(ViewPreference view) async {
+    try {
+      _viewPreference = view;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_view_preference', view.toStorageString());
+      debugPrint('💾 Vue sauvegardée: ${view.label}');
+      notifyListeners();
+    } catch (e) {
+      debugPrint('❌ Erreur sauvegarde préférence de vue: $e');
+    }
+  }
+
+  /// Réinitialiser la vue à la valeur par défaut
+  Future<void> resetViewPreference() async {
+    await setViewPreference(ViewPreference.kanban);
   }
 }

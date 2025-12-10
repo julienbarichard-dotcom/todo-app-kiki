@@ -6,21 +6,24 @@ import 'package:flutter/foundation.dart';
 // Import conditionnel : 'dart:html' sur le web, stub sur les autres plateformes
 import '../src/html_stub.dart' if (dart.library.html) 'dart:html' as html;
 import '../models/todo_task.dart';
+import '../models/view_preference.dart';
 import '../providers/todo_provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/outings_provider.dart';
 import '../services/google_calendar_service.dart';
 import '../config.dart';
-import '../widgets/todo_task_card.dart';
 import '../widgets/weather_widget.dart';
 import '../widgets/daily_outing_carousel.dart';
+import '../widgets/view_selector.dart';
 import '../models/outing.dart';
 import '../utils/open_link.dart';
 import 'add_task_screen.dart';
-import 'task_detail_screen.dart';
-import 'edit_task_screen.dart';
 import 'calendar_screen.dart';
 import 'kanban_screen.dart';
+import 'kanban_view_wrapper.dart';
+import 'list_view_screen.dart';
+import 'compact_view_screen.dart';
+import 'timeline_view_screen.dart';
 import 'stats_screen.dart';
 import 'preferences_screen.dart';
 
@@ -682,17 +685,8 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         elevation: 4,
         actions: [
-          // Icône Kanban
-          IconButton(
-            icon: const Icon(Icons.view_kanban),
-            tooltip: 'Vue Kanban',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const KanbanScreen()),
-              );
-            },
-          ),
+          // Sélecteur de vue
+          const ViewSelector(),
           // Icône Agenda
           IconButton(
             icon: const Icon(Icons.calendar_month),
@@ -852,66 +846,24 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(width: 16),
         ],
       ),
-      body: Consumer<TodoProvider>(
-        builder: (context, todoProvider, child) {
-          var taches = todoProvider.getTachesPourPersonne(utilisateurActuel);
-          var tachesFiltrees = _appliquerFiltres(taches);
+      body: Consumer<UserProvider>(
+        builder: (context, userProvider, child) {
+          final viewPreference = userProvider.viewPreference;
 
-          return Column(
-            children: [
-              _buildFiltresSection(),
-              Expanded(
-                child: tachesFiltrees.isEmpty
-                    ? Center(
-                        child: Text(
-                          'Aucune tâche',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(8),
-                        itemCount: tachesFiltrees.length,
-                        itemBuilder: (context, index) {
-                          final tache = tachesFiltrees[index];
-                          return TodoTaskCard(
-                            tache: tache,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      TaskDetailScreen(tache: tache),
-                                ),
-                              ).then((_) => setState(() {}));
-                            },
-                            onToggleComplete: () {
-                              todoProvider.toggleTacheComplete(tache.id);
-                            },
-                            onDelete: () {
-                              _confirmDelete(context, tache.id, todoProvider);
-                            },
-                            onEdit: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => EditTaskScreen(tache: tache),
-                                ),
-                              ).then((modified) {
-                                if (modified == true) {
-                                  setState(() {});
-                                }
-                              });
-                            },
-                            onChangeStatut: (nouveauStatut) async {
-                              final tacheModifiee =
-                                  tache.copyWith(statut: nouveauStatut);
-                              await todoProvider.modifierTache(tacheModifiee);
-                            },
-                          );
-                        },
-                      ),
-              ),
-            ],
+          return Consumer<TodoProvider>(
+            builder: (context, todoProvider, child) {
+              // Render appropriate view based on user preference
+              switch (viewPreference) {
+                case ViewPreference.kanban:
+                  return KanbanViewWrapper(utilisateur: utilisateurActuel);
+                case ViewPreference.list:
+                  return ListViewScreen(utilisateur: utilisateurActuel);
+                case ViewPreference.compact:
+                  return CompactViewScreen(utilisateur: utilisateurActuel);
+                case ViewPreference.timeline:
+                  return TimelineViewScreen(utilisateur: utilisateurActuel);
+              }
+            },
           );
         },
       ),
