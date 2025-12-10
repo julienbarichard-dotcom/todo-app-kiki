@@ -261,6 +261,18 @@ class UserProvider extends ChangeNotifier {
   Future<void> _loadViewPreference() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      // Migration: forcer la vue Liste par défaut au moins une fois
+      final hasMigrated = prefs.getBool('user_view_pref_migrated_v2') ?? false;
+      if (!hasMigrated) {
+        _viewPreference = ViewPreference.list;
+        await prefs.setString(
+            'user_view_preference', _viewPreference.toStorageString());
+        await prefs.setBool('user_view_pref_migrated_v2', true);
+        debugPrint('📺 Vue migrée par défaut → ${_viewPreference.label}');
+        notifyListeners();
+        return;
+      }
+
       final viewString = prefs.getString('user_view_preference');
       _viewPreference = ViewPreferenceExtension.fromStorageString(viewString);
       debugPrint('📺 Vue chargée: ${_viewPreference.label}');
