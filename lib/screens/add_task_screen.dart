@@ -716,7 +716,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         comments: [],
         isRejected: false,
       );
-      await todoProvider.ajouterTache(newTask);
+      await todoProvider.addTask(newTask);
     }
 
     if (!mounted) return;

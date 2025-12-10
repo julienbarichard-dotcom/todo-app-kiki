@@ -709,7 +709,7 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
     debugPrint('🔍 Date après modification: ${tacheModifiee.dateEcheance}');
 
     try {
-      await context.read<TodoProvider>().modifierTache(tacheModifiee);
+      await context.read<TodoProvider>().updateTask(tacheModifiee);
       if (mounted) {
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(

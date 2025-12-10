@@ -6,34 +6,34 @@ import '../services/google_calendar_service.dart';
 
 /// Provider pour gérer les tâches avec Supabase
 class TodoProvider extends ChangeNotifier {
-  List<TodoTask> _taches = [];
+  List<TodoTask> _tasks = [];
   Timer? _pollTimer;
 
-  List<TodoTask> get taches => _taches;
-  List<TodoTask> get tachesTriees => _taches;
+  List<TodoTask> get tasks => _tasks;
+  List<TodoTask> get sortedTasks => _tasks;
 
   /// Charger les tâches depuis Supabase
-  Future<void> loadTaches() async {
+  Future<void> loadTasks() async {
     try {
-      debugPrint('🔄 LOAD TACHES: Début du chargement...');
+      debugPrint('🔄 LOAD TASKS: Loading started...');
       final response = await supabaseService.tasksTable.select();
-      _taches =
+      _tasks =
           (response as List).map((json) => TodoTask.fromMap(json)).toList();
       debugPrint(
-          '🔄 LOAD TACHES: ${_taches.length} tâches chargées depuis Supabase');
+          '🔄 LOAD TASKS: ${_tasks.length} tasks loaded from Supabase');
 
       // Reporter automatiquement les tâches passées
-      debugPrint('🔄 LOAD TACHES: Lancement du report automatique...');
+      debugPrint('🔄 LOAD TASKS: Starting automatic overdue task reporting...');
       await _reportOverdueTasks();
-      debugPrint('🔄 LOAD TACHES: Report automatique terminé');
+      debugPrint('🔄 LOAD TASKS: Automatic reporting completed');
 
-      _triageParUrgenceDate();
+      _sortTasksByUrgencyAndDate();
       notifyListeners();
 
       // Synchroniser avec Calendar si connecté
       await syncWithCalendar();
     } catch (e) {
-      debugPrint('Erreur chargement tâches: $e');
+      debugPrint('Error loading tasks: $e');
     }
   }
 
@@ -45,21 +45,21 @@ class TodoProvider extends ChangeNotifier {
     final today = DateTime(now.year, now.month, now.day);
 
     debugPrint(
-        '🔍 REPORT AUTO: Vérification des tâches en retard (aujourd\'hui = $today)');
-    debugPrint('🔍 REPORT AUTO: Nombre total de tâches: ${_taches.length}');
+        '🔍 REPORT AUTO: Checking for overdue tasks (today = $today)');
+    debugPrint('🔍 REPORT AUTO: Total tasks: ${_tasks.length}');
 
     int reportCount = 0;
-    for (var tache in _taches) {
-      if (tache.dateEcheance != null && !tache.estComplete) {
+    for (var task in _tasks) {
+      if (task.dateEcheance != null && !task.estComplete) {
         // Comparer uniquement les DATES (sans l'heure)
         final echeanceDate = DateTime(
-          tache.dateEcheance!.year,
-          tache.dateEcheance!.month,
-          tache.dateEcheance!.day,
+          task.dateEcheance!.year,
+          task.dateEcheance!.month,
+          task.dateEcheance!.day,
         );
 
         debugPrint(
-            '🔍 Tâche "${tache.titre}": échéance=$echeanceDate, complète=${tache.estComplete}, isReported=${tache.isReported}');
+            '🔍 Task "${task.titre}": due=$echeanceDate, complete=${task.estComplete}, isReported=${task.isReported}');
 
         // SEULEMENT si la date est STRICTEMENT AVANT aujourd'hui
         if (echeanceDate.isBefore(today)) {
@@ -67,26 +67,26 @@ class TodoProvider extends ChangeNotifier {
 
           // Conserver l'heure si elle existe (pas 00:00:00)
           DateTime newDate;
-          if (tache.dateEcheance!.hour != 0 ||
-              tache.dateEcheance!.minute != 0 ||
-              tache.dateEcheance!.second != 0) {
+          if (task.dateEcheance!.hour != 0 ||
+              task.dateEcheance!.minute != 0 ||
+              task.dateEcheance!.second != 0) {
             // Il y a une heure : reporter avec la même heure
             newDate = DateTime(
               today.year,
               today.month,
               today.day,
-              tache.dateEcheance!.hour,
-              tache.dateEcheance!.minute,
-              tache.dateEcheance!.second,
+              task.dateEcheance!.hour,
+              task.dateEcheance!.minute,
+              task.dateEcheance!.second,
             );
             debugPrint(
-                '⏰ Tâche "${tache.titre}" reportée avec heure: ${tache.dateEcheance!.hour}:${tache.dateEcheance!.minute}');
+                '⏰ Task "${task.titre}" rescheduled with time: ${task.dateEcheance!.hour}:${task.dateEcheance!.minute}');
           } else {
             // Pas d'heure : juste la date
             newDate = today;
           }
 
-          final updatedTask = tache.copyWith(
+          final updatedTask = task.copyWith(
             dateEcheance: newDate,
             isReported: true, // 🔺 Triangle visible car reportée
           );
@@ -94,12 +94,12 @@ class TodoProvider extends ChangeNotifier {
           try {
             await supabaseService.tasksTable
                 .update(updatedTask.toMap())
-                .eq('id', tache.id);
+                .eq('id', task.id);
 
             // Mettre à jour localement
-            final index = _taches.indexWhere((t) => t.id == tache.id);
+            final index = _tasks.indexWhere((t) => t.id == task.id);
             if (index != -1) {
-              _taches[index] = updatedTask;
+              _tasks[index] = updatedTask;
             }
 
             // 📅 Synchroniser avec Google Calendar : mettre à jour la date de l'événement
@@ -107,26 +107,26 @@ class TodoProvider extends ChangeNotifier {
               try {
                 await googleCalendarService.updateEventFromTask(updatedTask);
                 debugPrint(
-                    '📅 Google Calendar mis à jour pour "${tache.titre}"');
+                    '📅 Google Calendar updated for "${task.titre}"');
               } catch (e) {
-                debugPrint('⚠️ Erreur sync Calendar pour "${tache.titre}": $e');
+                debugPrint('⚠️ Calendar sync error for "${task.titre}": $e');
               }
             }
 
             debugPrint(
-                '✅ Tâche "${tache.titre}" reportée de $echeanceDate à $newDate (🔺 triangle actif)');
+                '✅ Task "${task.titre}" rescheduled from $echeanceDate to $newDate (🔺 triangle active)');
           } catch (e) {
-            debugPrint('❌ Erreur report tâche ${tache.id}: $e');
+            debugPrint('❌ Error rescheduling task ${task.id}: $e');
           }
         } else if (echeanceDate.isAtSameMomentAs(today)) {
           // La tâche est déjà à aujourd'hui : PAS de report, PAS de triangle
           debugPrint(
-              '📅 Tâche "${tache.titre}" à aujourd\'hui (pas de report)');
+              '📅 Task "${task.titre}" already today (no rescheduling)');
         }
       }
     }
 
-    debugPrint('🔍 REPORT AUTO: Total reporté: $reportCount tâches');
+    debugPrint('🔍 REPORT AUTO: Total rescheduled: $reportCount tasks');
   }
 
   /// Forcer le report des tâches en retard (pour test manuel)
@@ -146,29 +146,29 @@ class TodoProvider extends ChangeNotifier {
 
       // Trouver les tâches locales qui ont un événement Calendar supprimé
       final tasksToClean = <TodoTask>[];
-      for (var tache in _taches) {
-        if (tache.dateEcheance != null && !calendarTaskIds.contains(tache.id)) {
+      for (var task in _tasks) {
+        if (task.dateEcheance != null && !calendarTaskIds.contains(task.id)) {
           // L'événement Calendar a été supprimé manuellement
-          tasksToClean.add(tache);
+          tasksToClean.add(task);
         }
       }
 
       // Option 1: Supprimer ces tâches (sync strict)
-      // for (var tache in tasksToClean) {
-      //   await supprimerTache(tache.id);
+      // for (var task in tasksToClean) {
+      //   await deleteTask(task.id);
       // }
 
       // Option 2: Juste retirer la date (sync doux - préféré)
-      for (var tache in tasksToClean) {
-        final updated = tache.copyWith(dateEcheance: null);
-        await modifierTache(updated);
+      for (var task in tasksToClean) {
+        final updated = task.copyWith(dateEcheance: null);
+        await updateTask(updated);
         debugPrint(
-            '🔄 Sync: Date retirée pour "${tache.titre}" (événement Calendar supprimé)');
+            '🔄 Sync: Date removed for "${task.titre}" (Calendar event deleted)');
       }
 
       if (tasksToClean.isNotEmpty) {
         debugPrint(
-            '✅ Synchronisation bidirectionnelle: ${tasksToClean.length} tâche(s) mise(s) à jour');
+            '✅ Bidirectional sync: ${tasksToClean.length} task(s) updated');
       }
     } catch (e) {
       debugPrint('Erreur synchronisation Calendar: $e');
@@ -181,12 +181,12 @@ class TodoProvider extends ChangeNotifier {
     if (_pollTimer != null) return;
     // Réduire la fréquence de polling pour éviter des appels répétés
     // lors du développement / en cas de réseau lent.
-    debugPrint('Subscription polling activée (refresh toutes les 30s)');
+    debugPrint('Subscription polling enabled (refresh every 30s)');
     _pollTimer = Timer.periodic(const Duration(seconds: 30), (t) async {
       try {
-        await loadTaches();
+        await loadTasks();
       } catch (e) {
-        debugPrint('Erreur polling loadTaches: $e');
+        debugPrint('Error polling loadTasks: $e');
       }
     });
   }
@@ -199,118 +199,118 @@ class TodoProvider extends ChangeNotifier {
         _pollTimer = null;
       }
     } catch (e) {
-      debugPrint('Erreur lors de la désinscription realtime: $e');
+      debugPrint('Error disposing realtime subscription: $e');
     }
     super.dispose();
   }
 
   /// Ajouter une tâche
-  Future<void> ajouterTache(TodoTask tache) async {
+  Future<void> addTask(TodoTask task) async {
     try {
-      await supabaseService.tasksTable.insert(tache.toMap());
-      _taches.add(tache);
-      _triageParUrgenceDate();
+      await supabaseService.tasksTable.insert(task.toMap());
+      _tasks.add(task);
+      _sortTasksByUrgencyAndDate();
       notifyListeners();
 
       // Synchroniser avec Google Calendar si la tâche a une date
-      if (tache.dateEcheance != null) {
-        await googleCalendarService.createEventFromTask(tache);
+      if (task.dateEcheance != null) {
+        await googleCalendarService.createEventFromTask(task);
       }
     } catch (e) {
-      debugPrint('Erreur ajout tâche: $e');
+      debugPrint('Error adding task: $e');
     }
   }
 
   /// Supprimer une tâche
-  Future<void> supprimerTache(String id) async {
+  Future<void> deleteTask(String id) async {
     try {
       await supabaseService.tasksTable.delete().eq('id', id);
-      _taches.removeWhere((t) => t.id == id);
+      _tasks.removeWhere((t) => t.id == id);
       notifyListeners();
 
       // Supprimer de Google Calendar
       await googleCalendarService.deleteEventFromTask(id);
     } catch (e) {
-      debugPrint('Erreur suppression tâche: $e');
+      debugPrint('Error deleting task: $e');
     }
   }
 
   /// Modifier une tâche
-  Future<void> modifierTache(TodoTask tache) async {
+  Future<void> updateTask(TodoTask task) async {
     try {
-      await supabaseService.tasksTable.update(tache.toMap()).eq('id', tache.id);
+      await supabaseService.tasksTable.update(task.toMap()).eq('id', task.id);
 
-      final index = _taches.indexWhere((t) => t.id == tache.id);
+      final index = _tasks.indexWhere((t) => t.id == task.id);
       if (index != -1) {
         // Récupérer l'ancienne tâche pour comparer l'état de complétion
-        final oldTache = _taches[index];
+        final oldTask = _tasks[index];
 
-        _taches[index] = tache;
+        _tasks[index] = task;
 
         // Si la tâche vient d'être marquée comme terminée, supprimer l'événement Calendar
-        if (!oldTache.estComplete && tache.estComplete) {
+        if (!oldTask.estComplete && task.estComplete) {
           debugPrint(
-              'Tâche "${tache.titre}" marquée terminée - suppression événement Calendar');
-          await googleCalendarService.deleteEventFromTask(tache.id);
+              'Task "${task.titre}" marked complete - deleting Calendar event');
+          await googleCalendarService.deleteEventFromTask(task.id);
         }
         // Si la tâche est réouverte (estComplete false) et a une date, recréer l'événement
-        else if (oldTache.estComplete &&
-            !tache.estComplete &&
-            tache.dateEcheance != null) {
+        else if (oldTask.estComplete &&
+            !task.estComplete &&
+            task.dateEcheance != null) {
           debugPrint(
-              'Tâche "${tache.titre}" réouverte - recréation événement Calendar');
-          await googleCalendarService.updateEventFromTask(tache);
+              'Task "${task.titre}" reopened - recreating Calendar event');
+          await googleCalendarService.updateEventFromTask(task);
         }
         // Sinon mise à jour normale
         else {
-          await googleCalendarService.updateEventFromTask(tache);
+          await googleCalendarService.updateEventFromTask(task);
         }
       }
-      _triageParUrgenceDate();
+      _sortTasksByUrgencyAndDate();
       notifyListeners();
     } catch (e) {
-      debugPrint('Erreur modification tâche: $e');
+      debugPrint('Error updating task: $e');
     }
   }
 
   /// Basculer complétude d'une tâche
-  Future<void> toggleTacheComplete(String id) async {
+  Future<void> toggleTaskComplete(String id) async {
     try {
-      final tache = _taches.firstWhere((t) => t.id == id);
-      final updated = tache.copyWith(estComplete: !tache.estComplete);
-      await modifierTache(updated);
+      final task = _tasks.firstWhere((t) => t.id == id);
+      final updated = task.copyWith(estComplete: !task.estComplete);
+      await updateTask(updated);
     } catch (e) {
-      debugPrint('Erreur toggle tâche: $e');
+      debugPrint('Error toggling task: $e');
     }
   }
 
   /// Obtenir les tâches assignées à une personne
-  List<TodoTask> getTachesPourPersonne(String prenom) {
-    return _taches.where((t) => t.assignedTo.contains(prenom)).toList();
+  List<TodoTask> getTasksForPerson(String prenom) {
+    return _tasks.where((t) => t.assignedTo.contains(prenom)).toList();
   }
 
   /// Obtenir les tâches urgentes
-  List<TodoTask> getTachesUrgentes() {
-    return _taches
+  List<TodoTask> getUrgentTasks() {
+    return _tasks
         .where((t) => t.urgence == Urgence.haute && !t.estComplete)
         .toList();
   }
 
   /// Obtenir les tâches complètes
-  List<TodoTask> getTachesCompletes() {
-    return _taches.where((t) => t.estComplete).toList();
+  List<TodoTask> getCompletedTasks() {
+    return _tasks.where((t) => t.estComplete).toList();
   }
 
   /// Obtenir les tâches à faire
-  List<TodoTask> getTachesEnAttente() {
-    return _taches.where((t) => !t.estComplete).toList();
+  List<TodoTask> getPendingTasks() {
+    return _tasks.where((t) => !t.estComplete).toList();
   }
 
   /// Nombre de tâches pour aujourd'hui pour une personne
   int countTasksTodayFor(String prenom) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    return _taches.where((t) {
+    return _tasks.where((t) {
       if (!t.assignedTo.contains(prenom)) return false;
       if (t.dateEcheance == null) return false;
       final d = DateTime(
@@ -323,7 +323,7 @@ class TodoProvider extends ChangeNotifier {
   int countTasksTodayAll() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    return _taches.where((t) {
+    return _tasks.where((t) {
       if (t.dateEcheance == null) return false;
       final d = DateTime(
           t.dateEcheance!.year, t.dateEcheance!.month, t.dateEcheance!.day);
@@ -333,26 +333,26 @@ class TodoProvider extends ChangeNotifier {
 
   /// Nombre de tâches reportées (isReported true) (tous utilisateurs)
   int countReportedAll() {
-    return _taches.where((t) => t.isReported).length;
+    return _tasks.where((t) => t.isReported).length;
   }
 
   /// Nombre de tâches dans la colonne 'A faire' (tous utilisateurs)
   int countEnAttenteAll() {
-    return _taches
+    return _tasks
         .where((t) => !t.estComplete && t.statut == Statut.enAttente)
         .length;
   }
 
   /// Nombre de tâches dans la colonne 'En cours' (tous utilisateurs)
   int countEnCoursAll() {
-    return _taches
+    return _tasks
         .where((t) => !t.estComplete && t.statut == Statut.enCours)
         .length;
   }
 
   /// Nombre de tâches dans la colonne 'Terminé' (tous utilisateurs)
   int countTermineAll() {
-    return _taches
+    return _tasks
         .where((t) => t.estComplete || t.statut == Statut.termine)
         .length;
   }
@@ -361,7 +361,7 @@ class TodoProvider extends ChangeNotifier {
   int countOverdueFor(String prenom) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    return _taches.where((t) {
+    return _tasks.where((t) {
       if (!t.assignedTo.contains(prenom)) return false;
       if (t.dateEcheance == null) return false;
       final d = DateTime(
@@ -373,15 +373,15 @@ class TodoProvider extends ChangeNotifier {
   /// Pourcentage de tâches complétées pour une personne (0.0 - 100.0)
   double completionPercentFor(String prenom) {
     final userTasks =
-        _taches.where((t) => t.assignedTo.contains(prenom)).toList();
+        _tasks.where((t) => t.assignedTo.contains(prenom)).toList();
     if (userTasks.isEmpty) return 0.0;
     final completed = userTasks.where((t) => t.estComplete).length;
     return (completed / userTasks.length) * 100.0;
   }
 
   /// Trier par urgence + date
-  void _triageParUrgenceDate() {
-    _taches.sort((a, b) {
+  void _sortTasksByUrgencyAndDate() {
+    _tasks.sort((a, b) {
       final urgenceOrder = {'haute': 0, 'moyenne': 1, 'basse': 2};
       final aOrder = urgenceOrder[a.urgence.label] ?? 2;
       final bOrder = urgenceOrder[b.urgence.label] ?? 2;

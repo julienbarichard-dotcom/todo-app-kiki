@@ -85,7 +85,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                       onChanged: (value) {
                         context
                             .read<TodoProvider>()
-                            .toggleTacheComplete(widget.tache.id);
+                            .toggleTaskComplete(widget.tache.id);
                         Navigator.pop(context);
                       },
                     ),
@@ -448,7 +448,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                           .copyWith(subTasks: updatedSubTasks);
                                       await context
                                           .read<TodoProvider>()
-                                          .modifierTache(updatedTask);
+                                          .updateTask(updatedTask);
                                     },
                                     title: Text(
                                       subTask.titre,
@@ -623,7 +623,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               title: Text(statut.label),
               onTap: () async {
                 final tacheModifiee = widget.tache.copyWith(statut: statut);
-                await context.read<TodoProvider>().modifierTache(tacheModifiee);
+                await context.read<TodoProvider>().updateTask(tacheModifiee);
                 if (context.mounted) {
                   Navigator.pop(context);
                   setState(() {});
