@@ -139,8 +139,7 @@ class TodoTask {
   final String titre;
   final String description;
   final Urgence urgence;
-  final DateTime?
-      dateEcheance; // Optionnelle - Keep camelCase for Dart property
+  // dateEcheance removed: due date is no longer part of the model
   bool estComplete; // Keep camelCase for Dart property
   final List<String>
       assignedTo; // Liste des prénoms assignés (IDs des users) - Keep camelCase for Dart property
@@ -150,12 +149,7 @@ class TodoTask {
   final Statut statut; // Statut de la tâche (A faire, En cours, Terminé)
   final bool isReported; // Tâche reportée automatiquement au lendemain
 
-  // Paramètres de notifications
-  final bool notificationEnabled; // Keep camelCase for Dart property
-  final int?
-      notificationMinutesBefore; // Minutes avant la date d'échéance - Keep camelCase for Dart property
-  // Rappels (nullable) stockés sous forme JSON (ex: [{"when":"2025-12-10T09:00:00Z","method":"email"}])
-  final List<Map<String, dynamic>>? reminders;
+  // Notification/reminders removed from model
 
   // Paramètres de multi-validation collaborative
   final bool isMultiValidation; // Active le mode multi-validation
@@ -169,7 +163,6 @@ class TodoTask {
     required this.titre,
     required this.description,
     required this.urgence,
-    this.dateEcheance,
     this.estComplete = false,
     this.assignedTo = const [],
     required this.dateCreation,
@@ -177,12 +170,10 @@ class TodoTask {
     this.label,
     this.statut = Statut.enAttente,
     this.isReported = false,
-    this.notificationEnabled = false,
-    this.notificationMinutesBefore,
+    // notification fields removed
     this.isMultiValidation = false,
     this.validations = const {},
     this.comments = const [],
-    this.reminders,
     this.isRejected = false,
     this.lastUpdatedValidation,
   });
@@ -195,8 +186,7 @@ class TodoTask {
       'titre': titre,
       'description': description,
       'urgence': urgence.name,
-      'date_echeance':
-          dateEcheance?.toIso8601String(), // Use snake_case for map key
+      // date_echeance removed
       'est_complete': estComplete, // Use snake_case for map key
       'assigned_to': assignedTo, // Use snake_case for map key
       'date_creation':
@@ -205,10 +195,7 @@ class TodoTask {
       'label': label,
       'statut': statut.name,
       'is_reported': isReported,
-      'notification_enabled': notificationEnabled, // Use snake_case for map key
-      'notification_minutes_before':
-          notificationMinutesBefore, // Use snake_case for map key
-      'reminders': reminders,
+      // notification and reminders removed
       'is_multi_validation': isMultiValidation,
       'validations': validations,
       'comments': comments.map((c) => c.toMap()).toList(),
@@ -228,9 +215,6 @@ class TodoTask {
         (e) => e.name == map['urgence'],
         orElse: () => Urgence.moyenne,
       ),
-      dateEcheance: map['date_echeance'] != null // Read from snake_case map key
-          ? DateTime.parse(map['date_echeance']) // Read from snake_case map key
-          : null,
       estComplete: map['est_complete'] ?? false, // Read from snake_case map key
       assignedTo: List<String>.from(
           map['assigned_to'] ?? []), // Read from snake_case map key
@@ -256,15 +240,7 @@ class TodoTask {
         orElse: () => Statut.enAttente,
       ),
       isReported: map['is_reported'] ?? false,
-      notificationEnabled:
-          map['notification_enabled'] ?? false, // Read from snake_case map key
-      notificationMinutesBefore:
-          map['notification_minutes_before'], // Read from snake_case map key
-      reminders: map['reminders'] != null
-          ? (map['reminders'] as List)
-              .map((e) => Map<String, dynamic>.from(e as Map))
-              .toList()
-          : null,
+        // notification/reminders removed from DB parsing
       isMultiValidation: map['is_multi_validation'] ?? false,
       validations: Map<String, bool>.from(map['validations'] ?? {}),
       comments: map['comments'] != null
@@ -285,7 +261,6 @@ class TodoTask {
     String? titre,
     String? description,
     Urgence? urgence,
-    DateTime? dateEcheance,
     bool? estComplete,
     List<String>? assignedTo,
     DateTime? dateCreation,
@@ -293,21 +268,19 @@ class TodoTask {
     String? label,
     Statut? statut,
     bool? isReported,
-    bool? notificationEnabled,
-    int? notificationMinutesBefore,
+    // notification fields removed
     bool? isMultiValidation,
     Map<String, bool>? validations,
     List<TaskComment>? comments,
     bool? isRejected,
     DateTime? lastUpdatedValidation,
-    List<Map<String, dynamic>>? reminders,
+    // reminders removed
   }) {
     return TodoTask(
       id: id ?? this.id,
       titre: titre ?? this.titre,
       description: description ?? this.description,
       urgence: urgence ?? this.urgence,
-      dateEcheance: dateEcheance ?? this.dateEcheance,
       estComplete: estComplete ?? this.estComplete,
       assignedTo: assignedTo ?? this.assignedTo,
       dateCreation: dateCreation ?? this.dateCreation,
@@ -315,13 +288,11 @@ class TodoTask {
       label: label ?? this.label,
       statut: statut ?? this.statut,
       isReported: isReported ?? this.isReported,
-      notificationEnabled: notificationEnabled ?? this.notificationEnabled,
-      notificationMinutesBefore:
-          notificationMinutesBefore ?? this.notificationMinutesBefore,
+      // notification fields removed
       isMultiValidation: isMultiValidation ?? this.isMultiValidation,
       validations: validations ?? this.validations,
       comments: comments ?? this.comments,
-      reminders: reminders ?? this.reminders,
+      // reminders removed
       isRejected: isRejected ?? this.isRejected,
       lastUpdatedValidation:
           lastUpdatedValidation ?? this.lastUpdatedValidation,
