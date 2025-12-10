@@ -240,7 +240,7 @@ class TodoTask {
         orElse: () => Statut.enAttente,
       ),
       isReported: map['is_reported'] ?? false,
-        // notification/reminders removed from DB parsing
+      // notification/reminders removed from DB parsing
       isMultiValidation: map['is_multi_validation'] ?? false,
       validations: Map<String, bool>.from(map['validations'] ?? {}),
       comments: map['comments'] != null
