@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="/">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="Gerez vos taches quotidiennes">
+
+  <!-- Force le rechargement à chaque mise à jour -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Todo des Kiki's">
+  <link rel="apple-touch-icon" href="assets/assets/images/logo%20todo.png">
+
+  <!-- Open Graph / Social Share -->
+  <meta property="og:title" content="Todo des Kiki's" />
+  <meta property="og:description" content="Gerez vos taches quotidiennes" />
+  <meta property="og:image" content="assets/assets/images/logo%20todo.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://app-des-kiki-s.web.app/" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Todo des Kiki's" />
+  <meta name="twitter:description" content="Gerez vos taches quotidiennes" />
+  <meta name="twitter:image" content="assets/assets/images/logo%20todo.png" />
+
+  <meta name="theme-color" content="#1976d2">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="shortcut icon" type="image/png" href="favicon.png"/>
+
+  <!-- Google Sign-In for Web -->
+  <meta name="google-signin-client_id" content="678172026114-1epb9v2qqin086v44kkk5kop0p97at9b.apps.googleusercontent.com">
+  
+  <title>Todo des Kiki's</title>
+  <link rel="manifest" href="manifest.json">
+</head>
+<body>
+  <script>
+    (function(){
+      try{
+        var isMobile = /Mobi|Android|iPhone|iPad|iPod|Opera Mini/i.test(navigator.userAgent);
+        if(isMobile && 'serviceWorker' in navigator){
+          // Unregister existing service workers to avoid stale caches on mobile
+          navigator.serviceWorker.getRegistrations().then(function(regs){
+            regs.forEach(function(r){ try{ r.unregister(); }catch(e){} });
+          }).catch(function(){});
+          // Prevent future registrations from the Flutter bootstrap
+          try{ navigator.serviceWorker.register = function(){ return Promise.resolve(); }; }catch(e){}
+        }
+      }catch(e){}
+    })();
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

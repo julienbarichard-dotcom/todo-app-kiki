@@ -1,0 +1,2 @@
+# Place ton URL publique de scraper ici (ex: https://<project>.functions.supabase.co/outings)
+# Laisser vide ou commencer par # pour désactiver.

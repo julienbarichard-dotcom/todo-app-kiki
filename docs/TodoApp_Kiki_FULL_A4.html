@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Todo App Kiki - Guide complet</title>
+  <style>
+    body{font-family: Arial, sans-serif; color:#111; margin:28px}
+    header{background:#1DB679;color:white;padding:18px;border-radius:6px}
+    h1{margin:0;font-size:22px}
+    h2{color:#1b5e3a;margin-top:18px}
+    p{margin:6px 0}
+    ul{margin:6px 0 12px 18px}
+    code{background:#f3f3f3;padding:2px 6px;border-radius:4px}
+    footer{margin-top:28px;font-size:12px;color:#555}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Todo App Kiki — Guide complet</h1>
+    <div>Mode d'emploi complet : toutes les fonctionnalités expliquées pas à pas</div>
+  </header>
+
+  <section>
+    <h2>Introduction</h2>
+    <p>Ce document décrit l'ensemble des fonctionnalités de l'application "Todo App Kiki" et explique comment les utiliser dans l'interface web/mobile.</p>
+  </section>
+
+  <section>
+    <h2>Table des matières</h2>
+    <ol>
+      <li>Navigation et profils</li>
+      <li>Ajouter / Modifier une tâche</li>
+      <li>Statuts et changement rapide</li>
+      <li>Filtres et tri</li>
+      <li>Carte (miniature) et détail</li>
+      <li>Kanban</li>
+      <li>Agenda / Calendrier</li>
+      <li>Sous‑tâches et pourcentage d'avancement</li>
+      <li>Notifications et e‑mails de récapitulatif</li>
+      <li>Aide (icône "i") et guide</li>
+      <li>Météo (Marseille)</li>
+      <li>Déploiement et builds</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>1. Navigation et profils</h2>
+    <p>- Barre supérieure (AppBar) : accès à la vue Kanban, Agenda, changement de profil et menu Options.</p>
+    <ul>
+      <li>Changer de profil : icône compte → choisissez un utilisateur et entrez le mot de passe si nécessaire.</li>
+      <li>Déconnexion : menu Options → Déconnexion.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>2. Ajouter / Modifier une tâche</h2>
+    <p>- Bouton + (flottant) : ouvre l'écran de création.</p>
+    <ul>
+      <li>Champs : titre (obligatoire), description, urgence (haute/moyenne/basse), date d'échéance, personne assignée, catégorie (label), statut.</li>
+      <li>UUID : chaque tâche reçoit un identifiant unique.</li>
+      <li>Modification : depuis la vignette → Editer (icône ou menu) puis sauvegarder.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>3. Statuts et changement rapide</h2>
+    <p>- Statuts disponibles : <strong>En attente</strong>, <strong>En cours</strong>, <strong>Terminé</strong>.</p>
+    <ul>
+      <li>Changer le statut depuis l'écran d'édition ou depuis la carte (menu 3 points → choisir le statut).</li>
+      <li>Statut évalué aussi via la propriété `estComplete` : lorsque terminé, la tâche peut être marquée complète.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>4. Filtres et tri</h2>
+    <p>- Zone de filtres en haut : plusieurs dropdowns compacts pour trier et filtrer.</p>
+    <ul>
+      <li>Tri par date (plus proche / plus lointain)</li>
+      <li>Filtre par état (Tous / En attente / En cours / Terminé)</li>
+      <li>Filtre par priorité (Haute / Moyenne / Basse)</li>
+      <li>Filtre par sous‑tâches (Avec / Sans)</li>
+      <li>Filtre par catégorie (Perso / B2B / Cuisine / Administratif / Loisir / Autre)</li>
+      <li>Bouton effacer pour réinitialiser les filtres actifs.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>5. Carte (miniature) et détail</h2>
+    <p>- Chaque tâche est affichée sous forme de carte listée.</p>
+    <ul>
+      <li>La carte montre : titre, courte description, bord coloré par urgence, badge statut, pourcentage d'avancement (basé sur les sous‑tâches), date, personne.</li>
+      <li>Actions rapides : cocher comme complète, éditer, supprimer, changer statut via le menu.</li>
+      <li>Cliquez sur la carte pour ouvrir la vue détail (tous les champs + sous‑tâches éditables).</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>6. Kanban</h2>
+    <p>- Accès via l'icône Kanban dans l'AppBar.</p>
+    <ul>
+      <li>Colonnes : En attente / En cours / Terminé.</li>
+      <li>Glisser‑déposer : déplacer visuellement les tâches entre colonnes (si implémenté pour la plateforme).</li>
+      <li>Actions sur les mini‑cartes similaires à la liste (menu statut, etc.).</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>7. Agenda / Calendrier</h2>
+    <p>- Accès via l'icône Agenda (AppBar).</p>
+    <ul>
+      <li>Les événements/tâches liées aux dates s'affichent en agenda.</li>
+      <li>Les cartes de session agenda sont cliquables et ouvrent un aperçu/dialog avec détails.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>8. Sous‑tâches et pourcentage d'avancement</h2>
+    <p>- Chaque tâche peut contenir une liste de sous‑tâches.</p>
+    <ul>
+      <li>Le pourcentage d'avancement est calculé : (sous‑tâches cochées / total des sous‑tâches) × 100.</li>
+      <li>La barre de progression apparaît sur la carte et dans la vue détail.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>9. Notifications et e‑mails</h2>
+    <p>- Récapitulatif quotidien : Supabase Function envoie un e‑mail de récapitulatif à 8h (configurable).</p>
+    <ul>
+      <li>La fonction `daily-email` interroge la base et envoie le HTML résumé via Resend (clé stockée en secret).</li>
+      <li>Vérifiez les secrets Supabase si les envois échouent (domaines d'envoi, adresses destinataires).</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>10. Aide (icône "i")</h2>
+    <p>- L'icône d'aide en haut à gauche ouvre un pop‑up avec un guide rapide.</p>
+    <ul>
+      <li>Pour le guide complet, ouvrir le fichier `docs/TodoApp_Kiki_FULL_A4.pdf` (disponible localement).</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>11. Météo (Marseille)</h2>
+    <p>- Mini‑widget météo dans l'AppBar (droite) : récupère la météo actuelle via Open‑Meteo (sans clé).</p>
+    <ul>
+      <li>Affiche : icône et température arrondie (ex. MRS 18°C).</li>
+      <li>Si l'API est injoignable, le placeholder affiche `--`.</li>
+      <li>Le widget appelle l'API à l'initialisation et gère un timeout court (6s).</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>12. Déploiement et builds</h2>
+    <p>- Commandes courantes :</p>
+    <pre><code>flutter pub get
+flutter build web --release
+firebase deploy --only hosting
+flutter build apk --release</code></pre>
+    <p>- Vérifiez `pubspec.yaml` pour les dépendances (ex: `shared_preferences`, `http` pour la météo, etc.).</p>
+  </section>
+
+  <footer>
+    Document généré automatiquement. Pour modifications : éditez `docs/TodoApp_Kiki_FULL_A4.html` puis générez le PDF avec le script `scripts/generate_pdf_full.py`.
+  </footer>
+</body>
+</html>
