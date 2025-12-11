@@ -275,7 +275,10 @@ class OutingsProvider extends ChangeNotifier {
           .timeout(const Duration(seconds: 10));
 
       debugPrint('📊 Status code: ${response.statusCode}');
-      debugPrint('📄 Response body: ${response.body.substring(0, 200)}...');
+      final bodyPreview = response.body.length > 200
+          ? '${response.body.substring(0, 200)}...'
+          : response.body;
+      debugPrint('📄 Response body: $bodyPreview');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

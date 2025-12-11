@@ -163,7 +163,7 @@ serve(async (req: Request) => {
         count: result.length,
         events: result,
         preferences_applied: prefs,
-        total_candidates: filtered.length,
+        total_candidates: scored.length,
       },
       200,
       corsHeaders
