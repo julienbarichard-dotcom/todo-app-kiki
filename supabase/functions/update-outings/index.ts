@@ -844,7 +844,7 @@ serve(async (req: Request) => {
   }
 
   // Nouveau endpoint POST /update-outings avec logs détaillés
-  if (req.method === 'POST' && (url.pathname === '/' || url.pathname.endsWith('/update-outings'))) {
+  if (req.method === 'POST') {
     try {
       const started = Date.now();
       let results: any[] = [];
