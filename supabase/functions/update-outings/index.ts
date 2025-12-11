@@ -185,8 +185,21 @@ async function scrapeTarpinBien(url: string, sourceName: string) {
         const titleEl = article.querySelector('h2, h3, .entry-title, .post-title');
         const title = titleEl ? (titleEl.textContent || '').trim() : '';
         
-        // Lien: premier <a> dans le titre ou article
-        const linkEl = article.querySelector('a[href]');
+        // Lien: chercher le <a> dans le titre d'abord, sinon premier <a> pertinent
+        let linkEl = null;
+        if (titleEl) {
+          // Chercher un lien dans ou après le titre
+          linkEl = titleEl.querySelector('a[href]');
+          if (!linkEl) linkEl = titleEl.closest('a[href]');
+        }
+        if (!linkEl) {
+          // Fallback: premier <a> qui n'est pas un lien technique
+          const allLinks = Array.from(article.querySelectorAll('a[href]')) as Element[];
+          linkEl = allLinks.find(l => {
+            const href = l.getAttribute('href') || '';
+            return !href.includes('#') && !href.includes('javascript') && !href.includes('comment');
+          });
+        }
         const href = linkEl ? linkEl.getAttribute('href') || '' : '';
         
         if (!href || !title || title.length < 3 || seen.has(href)) continue;
@@ -311,8 +324,19 @@ async function scrapeMarseilleTourisme(url: string, sourceName: string) {
         const titleEl = el.querySelector('h2, h3, .event-title, .post-title');
         const title = titleEl ? (titleEl.textContent || '').trim() : '';
         
-        // Lien: premier <a>
-        const linkEl = el.querySelector('a[href]');
+        // Lien: chercher le lien dans le titre en priorité, puis ailleurs
+        let linkEl = null;
+        if (titleEl) {
+          linkEl = titleEl.querySelector('a[href]');
+          if (!linkEl) linkEl = titleEl.closest('a[href]');
+        }
+        if (!linkEl) {
+          const allLinks = Array.from(el.querySelectorAll('a[href]')) as Element[];
+          linkEl = allLinks.find(l => {
+            const href = l.getAttribute('href') || '';
+            return !href.includes('#') && !href.includes('javascript') && !href.includes('comment');
+          });
+        }
         const href = linkEl ? linkEl.getAttribute('href') || '' : '';
         
         if (!href || !title || title.length < 3 || seen.has(href)) continue;
@@ -442,8 +466,19 @@ async function scrapeSortiraMarseille(url: string, sourceName: string) {
         const titleEl = el.querySelector('h2, h3, .event-title, .title');
         const title = titleEl ? (titleEl.textContent || '').trim() : '';
         
-        // Lien
-        const linkEl = el.querySelector('a[href]');
+        // Lien: chercher dans le titre d'abord
+        let linkEl = null;
+        if (titleEl) {
+          linkEl = titleEl.querySelector('a[href]');
+          if (!linkEl) linkEl = titleEl.closest('a[href]');
+        }
+        if (!linkEl) {
+          const allLinks = Array.from(el.querySelectorAll('a[href]')) as Element[];
+          linkEl = allLinks.find(l => {
+            const href = l.getAttribute('href') || '';
+            return !href.includes('#') && !href.includes('javascript') && !href.includes('comment');
+          });
+        }
         const href = linkEl ? linkEl.getAttribute('href') || '' : '';
         
         if (!href || !title || title.length < 3 || seen.has(href)) continue;
