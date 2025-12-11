@@ -158,7 +158,8 @@ async function fetchOutingsBatch(limit = 200) {
   } catch (e) { console.error('fetchOutingsBatch exception', e); return []; }
 }
 
-// Parser for tarpin-bien.com (WordPress blog with articles)
+// Parser for tarpin-bien.com (WordPress search results with événementCheck=1)
+// Structure: div.post-container > div.et_pb_post (ou article.post)
 async function scrapeTarpinBien(url: string, sourceName: string) {
   try {
     const res = await fetch(url, { method: 'GET', headers: { 'User-Agent': 'Mozilla/5.0' } });
@@ -175,76 +176,147 @@ async function scrapeTarpinBien(url: string, sourceName: string) {
     let counter = 0;
     const seen = new Set<string>();
 
-    // Cibler articles WordPress: .post, article, .event-item, etc.
-    const articles = Array.from(doc.querySelectorAll('article, .post, .event-item, .agenda-item')) as Element[];
-    console.log(`scrapeTarpinBien: found ${articles.length} articles/posts`);
+    // TARGET 1: Divi posts (.et_pb_post) - WordPress Divi theme structure
+    let posts = Array.from(doc.querySelectorAll('.et_pb_post, article.post, .post-container article')) as Element[];
+    console.log(`scrapeTarpinBien: found ${posts.length} .et_pb_post items`);
     
-    for (const article of articles) {
+    for (const post of posts) {
       try {
-        // Titre: h2, h3, .entry-title
-        const titleEl = article.querySelector('h2, h3, .entry-title, .post-title');
+        // Titre: h2.entry-title ou h2 dans le post
+        let titleEl = post.querySelector('h2.entry-title');
+        if (!titleEl) titleEl = post.querySelector('h2');
         const title = titleEl ? (titleEl.textContent || '').trim() : '';
         
-        // Lien: chercher le <a> dans le titre d'abord, sinon premier <a> pertinent
-        let linkEl = null;
-        if (titleEl) {
-          // Chercher un lien dans ou après le titre
-          linkEl = titleEl.querySelector('a[href]');
-          if (!linkEl) linkEl = titleEl.closest('a[href]');
-        }
-        if (!linkEl) {
-          // Fallback: premier <a> qui n'est pas un lien technique
-          const allLinks = Array.from(article.querySelectorAll('a[href]')) as Element[];
-          linkEl = allLinks.find(l => {
-            const href = l.getAttribute('href') || '';
-            return !href.includes('#') && !href.includes('javascript') && !href.includes('comment');
-          });
-        }
-        const href = linkEl ? linkEl.getAttribute('href') || '' : '';
-        
-        if (!href || !title || title.length < 3 || seen.has(href)) continue;
+        if (!title || title.length < 3) continue;
         if (title.toLowerCase().includes('cookie') || title.toLowerCase().includes('politique')) continue;
         
+        // Lien: Chercher le <a> DANS LE TITRE (priorité)
+        let href = '';
+        if (titleEl) {
+          const titleLink = titleEl.querySelector('a[href]');
+          if (titleLink) {
+            href = titleLink.getAttribute('href') || '';
+          }
+        }
+        
+        // Fallback: chercher .entry-title-link ou .post-title-link
+        if (!href) {
+          const titleLink = post.querySelector('.entry-title-link, .post-title-link, h2 a[href]');
+          if (titleLink) href = titleLink.getAttribute('href') || '';
+        }
+        
+        // Dernier fallback: premier lien pertinent du post
+        if (!href) {
+          const allLinks = Array.from(post.querySelectorAll('a[href]')) as Element[];
+          const relevant = allLinks.find(l => {
+            const h = l.getAttribute('href') || '';
+            return h.length > 10 && !h.includes('#') && !h.includes('javascript') && !h.includes('comment') && !h.includes('/category/');
+          });
+          if (relevant) href = relevant.getAttribute('href') || '';
+        }
+        
+        if (!href || seen.has(href)) continue;
         seen.add(href);
         
         let fullUrl = href.startsWith('http') ? href : new URL(href, url).toString();
 
-        // Date: chercher <time>, .post-date, data-date
+        // DATE: Chercher la date (très important!)
+        // Essayer: <time datetime>, .published, .posted-on, data-publish-date
         let date: string | null = null;
-        const timeEl = article.querySelector('time[datetime]');
+        
+        // 1. time[datetime]
+        const timeEl = post.querySelector('time[datetime]');
         if (timeEl) {
           date = timeEl.getAttribute('datetime');
-        } else {
-          const dateEl = article.querySelector('.post-date, .event-date, .date');
-          if (dateEl) date = (dateEl.textContent || '').trim();
         }
-
-        // Image: premier img dans article
-        let image: string | null = null;
-        const imgEl = article.querySelector('img');
-        if (imgEl) {
-          image = imgEl.getAttribute('src') || imgEl.getAttribute('data-src');
-          if (image && !image.startsWith('http')) {
-            image = new URL(image, url).toString();
+        
+        // 2. .published ou .posted-on (span/div class)
+        if (!date) {
+          const pubEl = post.querySelector('.published, .posted-on, .entry-date');
+          if (pubEl) {
+            const dateText = pubEl.getAttribute('datetime') || pubEl.textContent || '';
+            date = dateText.trim();
+          }
+        }
+        
+        // 3. Chercher dans le meta du post
+        if (!date) {
+          const metaEl = post.querySelector('.entry-meta, .post-meta');
+          if (metaEl) {
+            const dateText = metaEl.textContent || '';
+            // Extraire date au format YYYY-MM-DD si présente
+            const match = dateText.match(/\d{1,2}\s+\w+\s+\d{4}/);
+            if (match) date = match[0];
           }
         }
 
-        // Description: .entry-content p, .excerpt
+        // IMAGE: Chercher image dans le post
+        let image: string | null = null;
+        
+        // 1. .entry-featured-image-url ou figure img
+        let imgEl = post.querySelector('.entry-featured-image-url, figure img, .et_pb_image img');
+        if (imgEl) {
+          image = imgEl.getAttribute('src') || imgEl.getAttribute('data-src');
+        }
+        
+        // 2. Premier img du post (fallback)
+        if (!image) {
+          imgEl = post.querySelector('img');
+          if (imgEl) image = imgEl.getAttribute('src') || imgEl.getAttribute('data-src');
+        }
+        
+        if (image && !image.startsWith('http')) {
+          try {
+            image = new URL(image, url).toString();
+          } catch (e) {
+            image = null;
+          }
+        }
+
+        // DESCRIPTION: .entry-content, .post-content, .excerpt
         let description: string | null = null;
-        const descEl = article.querySelector('.entry-content p, .excerpt, .post-excerpt');
-        if (descEl) description = (descEl.textContent || '').trim().substring(0, 300);
+        let descEl = post.querySelector('.entry-content, .post-content');
+        if (descEl) {
+          const pEl = descEl.querySelector('p');
+          if (pEl) description = (pEl.textContent || '').trim().substring(0, 300);
+        }
+        
+        if (!description) {
+          const excerptEl = post.querySelector('.excerpt, .post-excerpt');
+          if (excerptEl) description = (excerptEl.textContent || '').trim().substring(0, 300);
+        }
 
-        // Location: chercher .location, .venue
+        // LOCATION: Chercher dans le texte ou attributs spécialisés
         let location: string | null = null;
-        const locEl = article.querySelector('.location, .venue, .event-location');
-        if (locEl) location = (locEl.textContent || '').trim();
+        const locEl = post.querySelector('[data-location], .location, .venue, .event-location');
+        if (locEl) {
+          location = locEl.getAttribute('data-location') || locEl.textContent || '';
+          location = location.trim();
+        }
 
-        // Catégories
+        // CATÉGORIES: heuristique sur titre + meta-categories
         const cats: string[] = [];
-        const lower = title.toLowerCase();
-        if (lower.includes('concert') || lower.includes('spectacle') || lower.includes('musique') || lower.includes('dj')) cats.push('electro');
-        if (lower.includes('expo') || lower.includes('exposition') || lower.includes('vernissage') || lower.includes('art')) cats.push('expo');
-        if (lower.includes('soirée') || lower.includes('soiree') || lower.includes('club') || lower.includes('night')) cats.push('soiree');
+        
+        // D'abord chercher les catégories Wordpress
+        const catLinks = Array.from(post.querySelectorAll('a[rel*="category"], .cat-links a')) as Element[];
+        if (catLinks.length > 0) {
+          for (const catLink of catLinks) {
+            const catText = (catLink.textContent || '').toLowerCase();
+            if (catText.includes('concert') || catText.includes('musique')) cats.push('concert');
+            if (catText.includes('expo') || catText.includes('exhibition')) cats.push('expo');
+            if (catText.includes('soirée') || catText.includes('soiree') || catText.includes('club')) cats.push('soiree');
+            if (catText.includes('spectacle') || catText.includes('théâtre')) cats.push('spectacle');
+          }
+        }
+        
+        // Sinon: heuristique sur titre
+        if (cats.length === 0) {
+          const lower = title.toLowerCase();
+          if (lower.includes('concert') || lower.includes('spectacle') || lower.includes('musique') || lower.includes('dj')) cats.push('concert');
+          if (lower.includes('expo') || lower.includes('exposition') || lower.includes('vernissage') || lower.includes('art')) cats.push('expo');
+          if (lower.includes('soirée') || lower.includes('soiree') || lower.includes('club') || lower.includes('night')) cats.push('soiree');
+          if (lower.includes('spectacle') || lower.includes('théâtre') || lower.includes('theatre')) cats.push('spectacle');
+        }
 
         items.push({
           id: `${sourceName}_${counter++}`,
@@ -255,37 +327,12 @@ async function scrapeTarpinBien(url: string, sourceName: string) {
           date,
           image,
           description,
-          location,
+          location: location || 'Marseille',
           organizer: null,
           price: null,
         });
       } catch (e) {
         console.warn('scrapeTarpinBien item error', e);
-      }
-    }
-    
-    // Fallback: si pas d'articles structurés, chercher les liens événements
-    if (items.length === 0) {
-      const allLinks = Array.from(doc.querySelectorAll('a[href*="evenement"], a[href*="event"]')) as Element[];
-      for (const link of allLinks.slice(0, 20)) {
-        const href = link.getAttribute('href') || '';
-        const text = (link.textContent || '').trim();
-        if (!href || !text || seen.has(href)) continue;
-        seen.add(href);
-        const fullUrl = href.startsWith('http') ? href : new URL(href, url).toString();
-        items.push({
-          id: `${sourceName}_${counter++}`,
-          title: text.substring(0, 255),
-          url: fullUrl,
-          source: sourceName,
-          categories: ['event'],
-          date: null,
-          image: null,
-          description: null,
-          location: null,
-          organizer: null,
-          price: null,
-        });
       }
     }
     
@@ -948,6 +995,9 @@ serve(async (req: Request) => {
             source: (r.source || '').substring(0, 50),
             categories: Array.isArray(r.categories) ? r.categories : [],
             date: parsedDate || defaultDate,  // Use default date if parsing fails (required NOT NULL)
+            image: r.image || null,
+            description: r.description ? r.description.substring(0, 500) : null,
+            location: r.location || 'Marseille',
             last_seen: new Date().toISOString(),
           };
         } catch (e) {
