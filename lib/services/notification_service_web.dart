@@ -5,6 +5,7 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import '../models/todo_task.dart';
 import 'notification_service_interface.dart';
+import '../utils/timezone_utils.dart';
 
 /// Implémentation "factice" du service de notification pour le web.
 /// Les notifications locales ne sont pas supportées sur le web de cette manière.
@@ -49,19 +50,14 @@ class NotificationService implements NotificationServiceInterface {
       return;
     }
 
-    final scheduleTime = task.dateEcheance!
-        .subtract(Duration(minutes: task.notificationMinutesBefore ?? 30));
+    final scheduleTime = TimezoneUtils.calculateScheduleTime(
+      task.dateEcheance!,
+      task.notificationMinutesBefore ?? 30,
+    );
+
     // Interpréter la date comme Europe/Paris et calculer le délai en UTC
     tz.initializeTimeZones();
-    final paris = tz.getLocation('Europe/Paris');
-    final tzSchedule = tz.TZDateTime(
-        paris,
-        scheduleTime.year,
-        scheduleTime.month,
-        scheduleTime.day,
-        scheduleTime.hour,
-        scheduleTime.minute,
-        scheduleTime.second);
+    final tzSchedule = TimezoneUtils.toParisTime(scheduleTime);
     final delay = tzSchedule.toUtc().difference(DateTime.now().toUtc());
 
     // Ne rien faire si l'heure est déjà passée.
