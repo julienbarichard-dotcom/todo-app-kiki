@@ -210,7 +210,17 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final outingsProv = Provider.of<OutingsProvider>(context, listen: false);
 
-      // Appel direct à Shotgun
+      // 1) Lire d'abord les 5 événements filtrés depuis la base (ignore Shotgun 429)
+      final filtered = await outingsProv.getFilteredOutings(userId: 'kiki');
+      if (filtered.isNotEmpty) {
+        _selectedOutings = filtered.take(3).toList();
+        debugPrint(
+            '✅ Supabase filter-outings: ${_selectedOutings?.length ?? 0} événements');
+        _isLoadingOutings = false;
+        return;
+      }
+
+      // 2) Fallback éventuel: tenter Shotgun direct si la base n'a rien (cas rare)
       await outingsProv.loadEvents();
 
       // Charger les préférences utilisateur

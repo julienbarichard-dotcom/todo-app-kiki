@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
 import '../providers/outings_provider.dart';
 
 class PreferencesScreen extends StatefulWidget {
@@ -73,6 +75,7 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
   }
 
   Future<void> _savePreferences() async {
+    // 1. Sauvegarde locale (SharedPreferences)
     final prefs = await SharedPreferences.getInstance();
     for (var categorie in _categoriesGroupees.values) {
       for (var entry in categorie.entries) {
@@ -81,13 +84,53 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
     }
 
     // Forcer le rafraîchissement des événements avec nouvelles préférences
+    // 2. Synchronisation automatique vers Supabase user_preferences
+    try {
+      final List<String> activeCategories = [];
+      for (var categorie in _categoriesGroupees.values) {
+        for (var entry in categorie.entries) {
+          if (entry.value) activeCategories.add(entry.key);
+        }
+      }
+
+      // Upsert vers user_preferences (user_id = 'kiki')
+      final supabaseUrl = 'https://qmpzycqvmgwwhwviqvla.supabase.co';
+      final supabaseKey =
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFtcHp5Y3F2bWd3d2h3dmlxdmxhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ2NzQ1MTYsImV4cCI6MjA1MDI1MDUxNn0.QZzT4T9Zg6HQJvHxpYZh8V0EKQXnHZDzJZKzCjdHk_g';
+
+      final body = {
+        'user_id': 'kiki',
+        'categories': activeCategories,
+        'keywords': [],
+        'max_price': null,
+      };
+
+      final response = await http.post(
+        Uri.parse('$supabaseUrl/rest/v1/user_preferences'),
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': 'Bearer $supabaseKey',
+          'Prefer': 'resolution=merge-duplicates',
+        },
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        debugPrint('✅ Préférences synchronisées avec Supabase');
+      } else {
+        debugPrint(
+            '⚠️ Erreur sync Supabase: ${response.statusCode} ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Erreur synchronisation Supabase: $e');
+    }
+
+    // 3. Rafraîchir les événements filtrés avec nouvelles préférences
     try {
       // ignore: use_build_context_synchronously
       final outingsProv = Provider.of<OutingsProvider>(context, listen: false);
-      outingsProv.resetDailyOuting(); // Vide le cache
-      await outingsProv.loadEvents(); // Recharge
 
-      // Récupérer nouvelles préférences actives
       final List<String> newPrefs = [];
       for (var categorie in _categoriesGroupees.values) {
         for (var entry in categorie.entries) {
@@ -95,9 +138,9 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
         }
       }
 
-      // Recalculer avec forceNew
-      outingsProv.pickSuggestion(newPrefs, forceNew: true);
-      debugPrint('✅ Événements rafraîchis avec nouvelles préférences');
+      // Recharger événements filtrés depuis /filter-outings (lit user_preferences)
+      await outingsProv.getFilteredOutings();
+      debugPrint('✅ Événements filtrés rechargés depuis Supabase');
     } catch (e) {
       debugPrint('⚠️ Erreur rafraîchissement événements: $e');
     }

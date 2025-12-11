@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:todo_app_kiki/providers/todo_provider.dart';
 import 'package:todo_app_kiki/providers/outings_provider.dart';
+import 'package:todo_app_kiki/models/outing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:todo_app_kiki/widgets/weather_widget.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 // Minimal, safe SplashScreen implementation with green gradient background.
 class SplashScreen extends StatefulWidget {
@@ -506,41 +508,59 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _showEventsPopup() async {
     try {
       final outingsProv = Provider.of<OutingsProvider>(context, listen: false);
-      await outingsProv.loadEvents(forceRefresh: false);
-      final todays = outingsProv.dailyOutings;
+
+      // Récupérer 5 événements filtrés selon les préférences
+      final filteredEvents =
+          await outingsProv.getFilteredOutings(userId: 'kiki');
 
       if (!mounted) return;
 
-      await showDialog(
+      if (filteredEvents.isEmpty) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: const Color(0xFF121212),
+            title: const Text('Événements du jour',
+                style: TextStyle(color: Colors.white)),
+            content: const Text('Aucun événement trouvé pour aujourd\'hui.',
+                style: TextStyle(color: Colors.white70)),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Fermer',
+                      style: TextStyle(color: Color(0xFF1DB679)))),
+            ],
+          ),
+        );
+        return;
+      }
+
+      // PageView pour carousel horizontal
+      int currentIndex = 0;
+      final pageController = PageController();
+
+      showDialog(
         context: context,
         builder: (context) {
-          if (todays.isEmpty) {
-            return AlertDialog(
-              title: const Text('Événements du jour'),
-              content: const Text('Aucun événement trouvé pour aujourd\'hui.'),
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Fermer')),
-              ],
-            );
-          }
-
           return Dialog(
             backgroundColor: const Color(0xFF121212),
-            child: SizedBox(
-              width: 360,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Row(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // En-tête
+                    Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Événements du jour',
+                        const Text('Événements recommandés',
                             style: TextStyle(
                                 color: Colors.white,
+                                fontSize: 18,
                                 fontWeight: FontWeight.bold)),
                         IconButton(
                           icon: const Icon(Icons.close, color: Colors.white70),
@@ -548,25 +568,125 @@ class _SplashScreenState extends State<SplashScreen>
                         )
                       ],
                     ),
-                  ),
-                  Flexible(
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: todays.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (context, i) {
-                        final o = todays[i];
-                        return ListTile(
-                          title: Text(o.title,
-                              style: const TextStyle(color: Colors.white)),
-                          subtitle: Text(o.location ?? '',
-                              style: const TextStyle(color: Colors.white70)),
-                          onTap: () => Navigator.of(context).pop(),
+                    const SizedBox(height: 12),
+
+                    // Carousel PageView
+                    SizedBox(
+                      height: 320,
+                      child: StatefulBuilder(builder: (ctx, setState) {
+                        return Column(
+                          children: [
+                            Expanded(
+                              child: PageView.builder(
+                                controller: pageController,
+                                onPageChanged: (index) {
+                                  setState(() {
+                                    currentIndex = index;
+                                  });
+                                },
+                                itemCount: filteredEvents.length,
+                                itemBuilder: (context, index) {
+                                  final event = filteredEvents[index];
+                                  return _buildEventCard(event);
+                                },
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+
+                            // Indicateurs de page (dots)
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: List.generate(
+                                filteredEvents.length,
+                                (index) => Container(
+                                  margin:
+                                      const EdgeInsets.symmetric(horizontal: 4),
+                                  width: currentIndex == index ? 12 : 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: currentIndex == index
+                                        ? const Color(0xFF1DB679)
+                                        : Colors.white30,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         );
-                      },
+                      }),
                     ),
-                  ),
-                ],
+
+                    const SizedBox(height: 16),
+
+                    // Boutons d'action
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        Flexible(
+                          child: ElevatedButton.icon(
+                            onPressed: () => pageController.previousPage(
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                            ),
+                            icon: const Icon(Icons.arrow_back_ios,
+                                size: 16, color: Colors.white),
+                            label: const Text('Préc.',
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 13)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white12,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 10),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              final event = filteredEvents[currentIndex];
+                              Navigator.of(context).pop();
+                              _launchEventUrl(event.url);
+                            },
+                            icon: const Icon(Icons.open_in_browser,
+                                size: 16, color: Colors.white),
+                            label: const Text('Ouvrir',
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 13)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1DB679),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 10),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: ElevatedButton.icon(
+                            onPressed: () => pageController.nextPage(
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                            ),
+                            icon: const Icon(Icons.arrow_forward_ios,
+                                size: 16, color: Colors.white),
+                            label: const Text('Suiv.',
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 13)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white12,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 10),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           );
@@ -576,7 +696,168 @@ class _SplashScreenState extends State<SplashScreen>
       debugPrint('Erreur chargement événements: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Erreur chargement événements')),
+          SnackBar(
+            content: Text('Erreur: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Construire une carte d'événement pour le carousel
+  Widget _buildEventCard(Outing event) {
+    return Card(
+      color: Colors.white.withValues(alpha: 0.08),
+      margin: const EdgeInsets.symmetric(horizontal: 8),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Titre
+            Text(
+              event.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Date et heure
+            Row(
+              children: [
+                const Icon(Icons.calendar_today,
+                    size: 14, color: Colors.white70),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    '${event.date.day}/${event.date.month}/${event.date.year} à ${event.date.hour}:${event.date.minute.toString().padLeft(2, '0')}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+
+            // Lieu
+            Row(
+              children: [
+                const Icon(Icons.location_on, size: 14, color: Colors.white70),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    event.location,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // Catégories
+            if (event.categories.isNotEmpty)
+              Wrap(
+                spacing: 4,
+                children: event.categories.take(2).map((cat) {
+                  return Chip(
+                    label: Text(
+                      cat,
+                      style: const TextStyle(fontSize: 9),
+                    ),
+                    backgroundColor:
+                        const Color(0xFF1DB679).withValues(alpha: 0.3),
+                    labelStyle: const TextStyle(
+                      color: Color(0xFF1DB679),
+                      fontSize: 9,
+                    ),
+                    padding: EdgeInsets.zero,
+                  );
+                }).toList(),
+              ),
+            const SizedBox(height: 6),
+
+            // Description
+            if (event.description != null && event.description!.isNotEmpty)
+              Text(
+                event.description!,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white60,
+                  fontSize: 10,
+                ),
+              ),
+
+            const SizedBox(height: 6),
+
+            // Source
+            Text(
+              'Source: ${event.source}',
+              style: const TextStyle(
+                color: Colors.white38,
+                fontSize: 9,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Lancer l'URL d'un événement
+  Future<void> _launchEventUrl(String? url) async {
+    if (url == null || url.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('URL non disponible pour cet événement'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      // Utiliser launch_url si disponible, sinon afficher l'URL
+      if (await canLaunchUrl(Uri.parse(url))) {
+        await launchUrl(
+          Uri.parse(url),
+          mode: LaunchMode.externalApplication,
+        );
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Impossible d\'ouvrir: $url'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Erreur ouverture URL: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }

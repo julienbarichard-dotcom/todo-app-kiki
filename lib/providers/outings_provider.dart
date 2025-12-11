@@ -246,4 +246,83 @@ class OutingsProvider extends ChangeNotifier {
     _dailyOutings.clear();
     notifyListeners();
   }
+
+  /// Récupère 5 événements filtrés selon les préférences via /filter-outings Edge Function
+  /// Si user_id est null, génère une session anonyme
+  Future<List<Outing>> getFilteredOutings({String? userId}) async {
+    try {
+      // Si pas d'userId, utiliser 'anonymous' pour les préférences par défaut
+      final effectiveUserId = userId ?? 'anonymous';
+
+      const functionsUrl =
+          'https://joupiybyhoytfuncqmyv.supabase.co/functions/v1/filter-outings';
+
+      final uri = Uri.parse(functionsUrl).replace(
+        queryParameters: {'user_id': effectiveUserId},
+      );
+
+      final headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ${SupabaseConfig.supabaseAnonKey}',
+        'apikey': SupabaseConfig.supabaseAnonKey,
+      };
+
+      debugPrint('📡 Appel /filter-outings pour user: $effectiveUserId');
+      debugPrint('🔗 URL: $uri');
+
+      final response = await http
+          .get(uri, headers: headers)
+          .timeout(const Duration(seconds: 10));
+
+      debugPrint('📊 Status code: ${response.statusCode}');
+      debugPrint('📄 Response body: ${response.body.substring(0, 200)}...');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        debugPrint('✅ JSON decoded');
+        debugPrint('📋 Keys in response: ${data.keys.toList()}');
+
+        final events = (data['events'] as List?) ?? [];
+        debugPrint(
+            '✅ ${events.length} événements filtrés reçus (from "events" key)');
+
+        final filtered = events
+            .cast<Map<String, dynamic>>()
+            .map((e) {
+              try {
+                return Outing(
+                  id: e['id'] ?? 'unknown',
+                  title: e['title'] ?? '(Sans titre)',
+                  url: e['url'] ?? '',
+                  source: e['source'] ?? 'outings',
+                  categories: List<String>.from(
+                    (e['categories'] as List?)?.cast<String>() ?? [],
+                  ),
+                  date: e['date'] != null
+                      ? DateTime.parse(e['date'])
+                      : DateTime.now(),
+                  location: e['location'] ?? 'Marseille',
+                  description: e['description'],
+                  imageUrl: e['image_url'],
+                );
+              } catch (parseErr) {
+                debugPrint('⚠️ Erreur parsing événement: $parseErr');
+                return null;
+              }
+            })
+            .whereType<Outing>()
+            .toList();
+
+        debugPrint('✅ ${filtered.length} événements parsés avec succès');
+        return filtered;
+      } else {
+        debugPrint('⚠️ Erreur /filter-outings: ${response.statusCode}');
+        debugPrint('⚠️ Body: ${response.body}');
+        return [];
+      }
+    } catch (e) {
+      debugPrint('❌ Erreur getFilteredOutings: $e');
+      return [];
+    }
+  }
 }

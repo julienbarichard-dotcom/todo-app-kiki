@@ -6,10 +6,9 @@ const app = express();
 app.use(express.json());
 
 const SOURCES = [
-  { name: 'vortexfrommars', url: 'https://vortexfrommars.net/' },
-  { name: 'shotgun', url: 'https://shotgun.co/' },
-  { name: 'agenda_culturel', url: 'https://agenda-culturel.com/' },
-  // add more sources or API endpoints as needed
+  { name: 'sortiramarseille', url: 'https://www.sortiramarseille.fr/' },
+  { name: 'tarpin-bien', url: 'https://tarpin-bien.com/' },
+  { name: 'marseille-tourisme', url: 'https://www.marseille-tourisme.com/vivez-marseille-blog/agenda/' },
 ];
 
 async function scrapeSite(url, sourceName) {

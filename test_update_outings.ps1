@@ -1,8 +1,10 @@
 # Test direct de la fonction update-outings
 # Remplacez YOUR_PROJECT_URL et YOUR_SERVICE_ROLE_KEY par vos vraies valeurs
 
-$projectUrl = "https://joupiybyhoytfuncqmyv.supabase.co"
-$serviceRoleKey = "VOTRE_SERVICE_ROLE_KEY_ICI"  # À remplacer!
+$projectUrl = $env:SUPABASE_URL
+$serviceRoleKey = $env:SUPABASE_SERVICE_ROLE_KEY
+if (-not $projectUrl) { $projectUrl = Read-Host -Prompt 'SUPABASE_URL (ex: https://xxxx.supabase.co)'}
+if (-not $serviceRoleKey) { $serviceRoleKey = Read-Host -Prompt 'SUPABASE_SERVICE_ROLE_KEY (service role key) - keep secret'}
 
 $headers = @{
     "Authorization" = "Bearer $serviceRoleKey"
