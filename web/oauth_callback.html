@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Authentification Google</title>
+  <script>
+    // Extraire le token de l'URL fragment
+    function extractToken() {
+      const hash = window.location.hash.substring(1);
+      const params = new URLSearchParams(hash);
+      const accessToken = params.get('access_token');
+      
+      if (accessToken && window.opener) {
+        // Envoyer le token à la fenêtre parent
+        window.opener.postMessage('access_token=' + accessToken, '*');
+        window.close();
+      } else {
+        document.body.innerHTML = '<p>Erreur: impossible de récupérer le token d\'accès</p>';
+      }
+    }
+
+    // Exécuter au chargement
+    window.onload = extractToken;
+  </script>
+</head>
+<body>
+  <p>Authentification en cours...</p>
+</body>
+</html>

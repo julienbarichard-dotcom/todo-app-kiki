@@ -1,0 +1,12 @@
+default_platform(:android)
+
+platform :android do
+  desc "Upload AAB to Google Play internal track"
+  lane :playstore do
+    supply(
+      json_key: 'android/playstore.json',
+      aab: 'build/app/outputs/bundle/release/app-release.aab',
+      track: 'internal'
+    )
+  end
+end

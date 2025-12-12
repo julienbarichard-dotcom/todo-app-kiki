@@ -1,0 +1,35 @@
+[
+  {
+    "id": "s1",
+    "title": "Club Cabaret : Lowlife Cartel X 99issue",
+    "date": "2025-11-28T23:00:00",
+    "location": "Cabaret Aléatoire - SMAC, Marseille",
+    "url": "https://shotgun.live/fr/events/28-11-club-cabaret-x-lowlife-cartel",
+    "source": "shotgun",
+    "categories": ["trance", "techno", "experimental"],
+    "imageUrl": "https://images.unsplash.com/photo-1571266028243-d220c7c0a7b6?w=800",
+    "description": "Soirée Lowlife Cartel X 99issue au Cabaret. Genres : Trance, Techno, Experimental. Tarif : 10,70€. 23h00."
+  },
+  {
+    "id": "s2",
+    "title": "Brillo Tropical",
+    "date": "2025-11-28T20:00:00",
+    "location": "Rooftop Massilia Beach, Marseille",
+    "url": "https://shotgun.live/fr/events/brillo-tropical",
+    "source": "shotgun",
+    "categories": ["tropical", "electro", "rooftop"],
+    "imageUrl": "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800",
+    "description": "Ambiance tropicale sur le rooftop. Tarif : 10,00€. 20h00."
+  },
+  {
+    "id": "s3",
+    "title": "Sunrave Warehouse Party #2",
+    "date": "2025-11-28T22:00:00",
+    "location": "Warehouse, Marseille",
+    "url": "https://shotgun.live/fr/events/sunrave-warehouse-party-2",
+    "source": "shotgun",
+    "categories": ["techno", "hardtek", "hardcore"],
+    "imageUrl": "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800",
+    "description": "Sunrave Warehouse Party #2. Genres : Techno, Hardtek, Hardcore. Tarif : 15,99€. 22h00."
+  }
+]
